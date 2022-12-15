@@ -2,6 +2,7 @@
 
 import time
 import rtmidi
+import asyncio
 
 from rtmidi.midiconstants import NOTE_OFF, NOTE_ON
 
@@ -30,36 +31,52 @@ def play_chord(notes=[60], dur=1, ch=1,vel=127, out=MIDIOUT):
         for i in range(count):
             out.send_message(off_msgs[i])
 
-def play_voice(notes, durs, chs, vels, out=MIDIOUT):
-    voice_count = len(notes)
-    longest = max([len(v) for v in notes])
-    for i in range(longest):
-        for j in range(voice_count):
-            try:
-                note = notes[j][i]
-                out.send_message(
-                    [NOTE_ON + chs[j] - 1, note, vels[j][i]]
-                )
-            except IndexError:
-                pass
-        for j in range(voice_count):
-            print(durs[j][i])
-            time.sleep(durs[j][i])
-        for j in range(voice_count):
-            out.send_message(
-                [NOTE_OFF + chs[j] - 1, notes[j][i], vels[j][i]]
+
+async def _play_voice(pitches, durs, ch, vels, out):
+    for i, p in enumerate(pitches):
+        non = [NOTE_ON + ch - 1, p, vels[i]]
+        nof = [NOTE_OFF + ch - 1, p, vels[i]]
+        try:
+            out.send_message(non)
+            await asyncio.sleep(durs[i])
+        finally:
+            out.send_message(nof)
+
+async def play_poly(voice_pitches, voice_durs, chs, voice_vels, out=MIDIOUT):
+    play_voices = [] # playable voices
+    for i in range(len(voice_pitches)):
+        play_voices.append(
+            asyncio.create_task(_play_voice(
+                voice_pitches[i],
+                voice_durs[i],
+                chs[i],
+                voice_vels[i],
+                out)
             )
+        )
+    await asyncio.wait(play_voices)
 
 
 if __name__ == "__main__":
     with (MIDIOUT.open_port(0) if MIDIOUT.get_ports() else
             MIDIOUT.open_virtual_port("My virtual output")):
-        import random
-        chs = [[64+i for i in [0, 4, 7, 12]] for _ in range(10)]
-        for i in range(1000):
-            for ch in chs:
-                print(i, ch)
-                play_chord(ch, dur=.0001+(i*.001), vel=100, ch=1)
+
+        # import random
+        # chs = [[64+i for i in [0, 4, 7, 12]] for _ in range(10)]
+        # for i in range(1000):
+        #     for ch in chs:
+        #         print(i, ch)
+        #         play_chord(ch, dur=.0001+(i*.001), vel=100, ch=1)
+
+
+        asyncio.run(play_poly(
+            [list(range(40, 50)),
+            list(range(40, 60)),
+            list(range(40, 70))],
+            [[1] * 10, [.5] * 20, [1/3] * 30],
+            [1, 2, 3],
+            [[100] * 10, [100] * 20, [100] * 30]
+        ))
 
     del MIDIOUT
 

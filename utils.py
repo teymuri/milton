@@ -48,6 +48,7 @@ async def _play_voice(pitches, durs, ch, vels, out, show):
         finally:
             out.send_message(nof)
 
+# TODO: packing chords in voices should become possible.
 async def play_poly(voice_pitches, voice_durs, chs, voice_vels, show=False, out=MIDI_OUT):
     play_voices = [] # playable voices
     for i in range(len(voice_pitches)):
@@ -71,12 +72,6 @@ def test():
 
         import random
 
-        # chs = [[64+i for i in [0, 4, 7, 12]] for _ in range(10)]
-        # for i in range(1000):
-        #     for ch in chs:
-        #         print(i, ch)
-        #         play_chord(ch, dur=.0001+(i*.001), vel=100, ch=1)
-
         v_cnt = 4
         n_cnt = 1000
         asyncio.run(
@@ -88,8 +83,51 @@ def test():
                 True
             )
         )
-
     del MIDI_OUT
 
+def piccolo():
+    viertel = 6/5
+    notes = list(range(36, 75, 2)) + list(range(72, 35, -2))
+    up = list(range(36, 75, 2))
+    down = reversed(up)
+    d = viertel / 2 / len(up)
+    for p in cycle(up):
+        print(p)
+        play_note(p, d, vel=50)
+    
+def run(func):
+    """Run the func and cleanup the shit."""
+    global MIDI_OUT
+    with (MIDI_OUT.open_port(0) if MIDI_OUT.get_ports() else
+            MIDI_OUT.open_virtual_port("My virtual output")):
+        func()
+    del MIDI_OUT
+
+
+# Note names
+G3 = 55
+C4 = 60
+D4 = 62
+E4 = 64
+F4 = 65
+G4 = 67
+
+MAJ4 = [0, 3, 7, 12]
+def trem():
+    chs = [[62+i for i in MAJ4] for _ in range(10)]
+    for i in range(1000):
+        d = .0001 + i * .001
+        dd = 0.5 - i * .1
+        for x in range(10):
+
+            print(dd)
+            play_note(E4, dur=dd, vel=100)
+        # for ch in chs:
+        #     play_chord(ch, dur=d, vel=100, ch=1)
+
+
 if __name__ == "__main__":
-    test()
+    from itertools import cycle
+    # test()
+    # clean(piccolo)
+    clean(trem)

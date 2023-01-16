@@ -9,15 +9,17 @@ from rtmidi.midiconstants import NOTE_OFF, NOTE_ON
 
 MIDI_OUT = rtmidi.MidiOut()
 
-def play_note(note=60, dur=1, ch=1,vel=127,  out=MIDI_OUT):
+def play_note(note=60, dur=1, ch=1,vel=127):
     # 3 bytes of non,nof msgs
     note_on = [NOTE_ON + ch - 1, note, vel]
     note_off = [NOTE_OFF + ch - 1, note, vel]
-    try:
-        out.send_message(note_on)
-        time.sleep(dur)
-    finally:
-        out.send_message(note_off)
+    with (MIDI_OUT.open_port(0) if MIDI_OUT.get_ports() else
+            MIDI_OUT.open_virtual_port("My virtual output")):
+        try:
+            MIDI_OUT.send_message(note_on)
+            time.sleep(dur)
+        finally:
+            MIDI_OUT.send_message(note_off)
 
 def play_chord(notes=[60], dur=1, ch=1,vel=127, out=MIDI_OUT):
     count = len(notes)

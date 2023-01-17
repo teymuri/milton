@@ -99,7 +99,7 @@ def _is_wanted_port(port_name):
 
 
 # This is the main function to use should probably not be here!.
-def comp(func):
+def run(func):
     """Run the func and cleanup the shit."""
     global MOUT
     ports = MOUT.get_ports()
@@ -120,7 +120,6 @@ def comp(func):
                 MOUT.send_message([CONTROL_CHANGE, ALL_SOUND_OFF, 0])
                 MOUT.send_message([CONTROL_CHANGE, RESET_ALL_CONTROLLERS, 0])
                 time.sleep(0.05)
-            # del MOUT
 
 # Use only when really not need the mout
 def cleanup():
@@ -150,4 +149,4 @@ def trem():
 
 
 if __name__ == "__main__":
-    comp(trem)
+    run(trem)

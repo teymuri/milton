@@ -3,13 +3,14 @@
 import time
 import rtmidi
 import asyncio
-
+import cfg
 from rtmidi.midiconstants import (NOTE_OFF, NOTE_ON,
                                 ALL_SOUND_OFF, CONTROL_CHANGE,
                                 RESET_ALL_CONTROLLERS)
 
-MY_SYNTH_PORTS = ("zynaddsubfx", )
+
 MOUT = rtmidi.MidiOut(rtmidi.API_UNIX_JACK, name="Computil Client")
+
 
 def play_note(pitch=60, dur=1, ch=1, vel=127):
     # 3 bytes of non,nof msgs
@@ -92,24 +93,26 @@ def piccolo():
         print(p)
         play_note(p, d, vel=50)
 
-def find_port_idx(port_name):    
-    for i, my_port in enumerate(MY_SYNTH_PORTS):
-        if my_port in port_name:
-            return i
-    raise NameError(f"Port '{port_name}' doesn't exist")
+def _is_wanted_port(port_name):    
+    port_name = port_name.lower()
+    return all([pid.lower() in port_name for pid in cfg.MPIDS])
 
 
-def run(func):
+# This is the main function to use should probably not be here!.
+def comp(func):
     """Run the func and cleanup the shit."""
     global MOUT
     ports = MOUT.get_ports()
-    for p in ports:
-        try:
-            print(p, find_port_idx(p))
-        except NameError:
-            print(p)
-    with (MOUT.open_port(1) if MOUT.get_ports() else
-            MOUT.open_virtual_port("My virtual output")):
+    # connect to the desired port
+    if ports:
+        port_idx = 0
+        for i, p in enumerate(ports):
+            if _is_wanted_port(p): 
+                port_idx = i
+        port = MOUT.open_port(port_idx, name=MOUT.get_port_name(port_idx))
+    else:
+        port = MOUT.open_virtual_port("Computil Virtual Output")
+    with (port):
         try:
             func()
         finally:
@@ -134,28 +137,13 @@ def trem():
     for i in range(1000):
         d = .0001 + i * .001
         dd = 0.5 - i * .1
-        for x in range(10):
-
+        # for x in range(10):
+        #
             # print(dd)
-            play_note(40, dur=d, vel=100)
-        # for ch in chs:
-        #     play_chord(ch, dur=d, vel=100, ch=1)
+            # play_note(40, dur=d, vel=100)
+        for ch in chs:
+            play_chord(ch, dur=d, vel=100, ch=1)
 
-def is_known_port(port_name):
-    for my_port in MY_SYNTH_PORTS:
-        if my_port in port_name:
-            return True
-    return False
 
 if __name__ == "__main__":
-    from itertools import cycle
-    # test()
-    import rtmidi.midiutil
-    # print(rtmidi.get_compiled_api())
-    # print(rtmidi.API_UNIX_JACK)
-    # print(MOUT.get_current_api())
-    # print(MOUT.get_ports())
-    # print(MOUT.get_port_count())
-    # z=MOUT.get_port_name(1)
-    # MOUT.open_port(1, name=z)
-    run(trem)
+    comp(trem)

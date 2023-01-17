@@ -115,7 +115,8 @@ def run(func):
     with (port):
         try:
             func()
-        finally:
+        except KeyboardInterrupt:
+            # if interrupted while running function, send panic msg
             for channel in range(16):
                 MOUT.send_message([CONTROL_CHANGE, ALL_SOUND_OFF, 0])
                 MOUT.send_message([CONTROL_CHANGE, RESET_ALL_CONTROLLERS, 0])

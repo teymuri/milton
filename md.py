@@ -3,10 +3,10 @@
 import time
 import rtmidi
 import asyncio
-import cfg
 from rtmidi.midiconstants import (NOTE_OFF, NOTE_ON,
                                 ALL_SOUND_OFF, CONTROL_CHANGE,
                                 RESET_ALL_CONTROLLERS)
+from . import cfg
 
 
 MOUT = rtmidi.MidiOut(rtmidi.API_UNIX_JACK, name="Computil Client")
@@ -120,8 +120,12 @@ def comp(func):
                 MOUT.send_message([CONTROL_CHANGE, ALL_SOUND_OFF, 0])
                 MOUT.send_message([CONTROL_CHANGE, RESET_ALL_CONTROLLERS, 0])
                 time.sleep(0.05)
-            del MOUT
+            # del MOUT
 
+# Use only when really not need the mout
+def cleanup():
+    global MOUT
+    MOUT.delete()
 
 # Note names
 G3 = 55

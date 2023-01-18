@@ -3,24 +3,37 @@
 import time
 import rtmidi
 import asyncio
-from rtmidi.midiconstants import (NOTE_OFF, NOTE_ON,
-                                ALL_SOUND_OFF, CONTROL_CHANGE,
-                                RESET_ALL_CONTROLLERS)
-from . import cfg
+from math import modf
+from rtmidi.midiconstants import (
+    NOTE_OFF, NOTE_ON, PITCH_BEND,
+    ALL_SOUND_OFF, CONTROL_CHANGE,
+    RESET_ALL_CONTROLLERS
+)
+# from . import cfg
+import cfg
 
 
 MOUT = rtmidi.MidiOut(rtmidi.API_UNIX_JACK, name="Computil Client")
-
-
+# cfg.MPIDS = ("zyn", "input")
 def play_note(keynum=60, dur=1, ch=1, vel=127):
     # 3 bytes of NON/NOF messages:
     # [status byte, data byte 1, data byte 2]
     # status byte, first hex digit: 8 for note off, 9 for note on
     # data byte 1: pitch, data byte 2: velocity
-    non = [NOTE_ON + ch - 1, keynum, vel]
-    nof = [NOTE_OFF + ch - 1, keynum, vel]
+    ch -= 1
+    non_msg = (NOTE_ON + ch, keynum, vel)
+    nof = [NOTE_OFF + ch, keynum, vel]
+    fpart, ipart = modf(keynum)
+    # https://sites.uci.edu/camp2014/2014/04/30/managing-midi-pitchbend-messages/
+    bend_center = 8192
+    bend_max = 16384
+    semitone_bend_range = (bend_max - bend_center) / 2
+    bend_val = bend_center + int(fpart * semitone_bend_range)
+    print(fpart, ipart, bend_val)
+    bend_msg = [PITCH_BEND + ch, bend_val & 0x7f, (bend_val >> 7) & 0x7f]
     try:
-        MOUT.send_message(non)
+        MOUT.send_message(non_msg)
+        MOUT.send_message(bend_msg)
         time.sleep(dur)
     finally:
         MOUT.send_message(nof)
@@ -100,11 +113,15 @@ def _is_wanted_port(port_name):
     port_name = port_name.lower()
     return all([pid.lower() in port_name for pid in cfg.MPIDS])
 
+# Use only when really not need the mout
+def cleanup():
+    global MOUT
+    MOUT.delete()
+    print("MIDIOUT is gone!")
 
 # This is the main function to use should probably not be here!.
 def run(func):
     """Run the func and cleanup the shit."""
-    global MOUT
     ports = MOUT.get_ports()
     # connect to the desired port
     if ports:
@@ -124,11 +141,9 @@ def run(func):
                 MOUT.send_message([CONTROL_CHANGE, ALL_SOUND_OFF, 0])
                 MOUT.send_message([CONTROL_CHANGE, RESET_ALL_CONTROLLERS, 0])
                 time.sleep(0.05)
+        # finally:
+        #     cleanup()
 
-# Use only when really not need the mout
-def cleanup():
-    global MOUT
-    MOUT.delete()
 
 # Note names
 G3 = 55
@@ -153,4 +168,6 @@ def trem():
 
 
 if __name__ == "__main__":
-    run(trem)
+    for i in range(10):
+        run(lambda: play_note(60 + (i/10), dur=0.01))
+    # run(lambda: play_note(60.77))

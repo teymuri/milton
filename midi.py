@@ -12,10 +12,10 @@ from . import cfg
 MOUT = rtmidi.MidiOut(rtmidi.API_UNIX_JACK, name="Computil Client")
 
 
-def play_note(pitch=60, dur=1, ch=1, vel=127):
+def play_note(keynum=60, dur=1, ch=1, vel=127):
     # 3 bytes of non,nof msgs
-    non = [NOTE_ON + ch - 1, pitch, vel]
-    nof = [NOTE_OFF + ch - 1, pitch, vel]
+    non = [NOTE_ON + ch - 1, keynum, vel]
+    nof = [NOTE_OFF + ch - 1, keynum, vel]
     try:
         MOUT.send_message(non)
         time.sleep(dur)

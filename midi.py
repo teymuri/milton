@@ -13,7 +13,8 @@ from rtmidi.midiconstants import (
 import cfg
 
 MOUT = rtmidi.MidiOut(name="Computil Client", rtapi=rtmidi.API_LINUX_ALSA)
-cfg.MPIDS = ("yoshimi")
+
+
 def play_note(keynum=60, dur=1, ch=1, vel=127):
     # 3 bytes of NON/NOF messages:
     # [status byte, data byte 1, data byte 2]
@@ -117,12 +118,15 @@ def _is_wanted_port(port_name):
 # Use only when really not need the mout
 def cleanup():
     global MOUT
+    print(f"Killing {MOUT}")
     MOUT.delete()
-    print("MIDIOUT is gone!")
 
 # This is the main function to use should probably not be here!.
-def run(func):
-    """Run the func and cleanup"""
+def run(func, script=True):
+    """Run the func and cleanup. If running from inside a script
+    also dealloc the MOUT object. run should be given one single
+    func which is your composition, don't call it multiple times
+    via iteration etc."""
     ports = MOUT.get_ports()
     # connect to the desired port
     if ports:
@@ -133,7 +137,6 @@ def run(func):
         port = MOUT.open_port(port_idx, name=MOUT.get_port_name(port_idx))
     else:
         port = MOUT.open_virtual_port("Computil Virtual Output")
-
     with port:
         try:
             func()
@@ -144,8 +147,9 @@ def run(func):
                 MOUT.send_message([CONTROL_CHANGE, ALL_SOUND_OFF, 0])
                 MOUT.send_message([CONTROL_CHANGE, RESET_ALL_CONTROLLERS, 0])
                 time.sleep(0.05)
-        # finally:
-        #     cleanup()
+        finally:
+            if script: # don't if in the python shell
+                cleanup()
 
 
 # Note names
@@ -171,4 +175,9 @@ def trem():
 
 
 if __name__ == "__main__":
-    run(lambda: play_note(60, dur=1))
+    def f():
+        for _ in range(100):
+            for i in range(100):
+                play_note(10+i, dur=0.1)
+            time.sleep(0.2)
+    run(f)

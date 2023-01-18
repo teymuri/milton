@@ -13,7 +13,10 @@ MOUT = rtmidi.MidiOut(rtmidi.API_UNIX_JACK, name="Computil Client")
 
 
 def play_note(keynum=60, dur=1, ch=1, vel=127):
-    # 3 bytes of non,nof msgs
+    # 3 bytes of NON/NOF messages:
+    # [status byte, data byte 1, data byte 2]
+    # status byte, first hex digit: 8 for note off, 9 for note on
+    # data byte 1: pitch, data byte 2: velocity
     non = [NOTE_ON + ch - 1, keynum, vel]
     nof = [NOTE_OFF + ch - 1, keynum, vel]
     try:
@@ -116,7 +119,7 @@ def run(func):
         try:
             func()
         except KeyboardInterrupt:
-            # if interrupted while running function, send panic msg
+            # if interrupted while running function, panic!
             for channel in range(16):
                 MOUT.send_message([CONTROL_CHANGE, ALL_SOUND_OFF, 0])
                 MOUT.send_message([CONTROL_CHANGE, RESET_ALL_CONTROLLERS, 0])

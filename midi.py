@@ -22,21 +22,24 @@ def play_note(keynum=60, dur=1, ch=1, vel=127):
     # data byte 1: pitch, data byte 2: velocity
     ch -= 1
     non_msg = (NOTE_ON + ch, keynum, vel)
-    nof = [NOTE_OFF + ch, keynum, vel]
+    nof_msg = (NOTE_OFF + ch, keynum, vel)
     fpart, ipart = modf(keynum)
     # https://sites.uci.edu/camp2014/2014/04/30/managing-midi-pitchbend-messages/
     bend_center = 8192
     bend_max = 16384
     semitone_bend_range = (bend_max - bend_center) / 2
     bend_val = bend_center + int(fpart * semitone_bend_range)
-    print(fpart, ipart, bend_val)
     bend_msg = [PITCH_BEND + ch, bend_val & 0x7f, (bend_val >> 7) & 0x7f]
+    bend_reset_msg = [PITCH_BEND + ch, bend_center & 0x7f, (bend_center >> 7) & 0x7f]
     try:
+        # MOUT.send_message(bend_msg)
         MOUT.send_message(non_msg)
-        MOUT.send_message(bend_msg)
-        time.sleep(dur)
     finally:
-        MOUT.send_message(nof)
+        print("fin")
+        time.sleep(dur)
+        MOUT.send_message(nof_msg)
+        # MOUT.send_message(bend_reset_msg)
+        # MOUT.send_message([CONTROL_CHANGE + ch, 0, 0])
 
 def play_chord(notes=[60], dur=1, ch=1,vel=127, out=MOUT):
     count = len(notes)
@@ -168,6 +171,6 @@ def trem():
 
 
 if __name__ == "__main__":
-    for i in range(10):
-        run(lambda: play_note(60 + (i/10), dur=0.01))
-    # run(lambda: play_note(60.77))
+    # for i in range(10):
+    #     run(lambda: play_note(60 + (i/10), dur=0.1))
+    run(lambda: play_note(60, dur=0.1))

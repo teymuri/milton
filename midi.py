@@ -3,24 +3,42 @@
 import time
 import rtmidi
 import asyncio
-from rtmidi.midiconstants import (NOTE_OFF, NOTE_ON,
-                                ALL_SOUND_OFF, CONTROL_CHANGE,
-                                RESET_ALL_CONTROLLERS)
-from . import cfg
+from math import modf
+from rtmidi.midiconstants import (
+    NOTE_OFF, NOTE_ON, PITCH_BEND,
+    ALL_SOUND_OFF, CONTROL_CHANGE,
+    RESET_ALL_CONTROLLERS
+)
+# from . import cfg
+import cfg
+
+MOUT = rtmidi.MidiOut(name="Computil Client", rtapi=rtmidi.API_LINUX_ALSA)
 
 
-MOUT = rtmidi.MidiOut(rtmidi.API_UNIX_JACK, name="Computil Client")
-
-
-def play_note(pitch=60, dur=1, ch=1, vel=127):
-    # 3 bytes of non,nof msgs
-    non = [NOTE_ON + ch - 1, pitch, vel]
-    nof = [NOTE_OFF + ch - 1, pitch, vel]
+def play_note(keynum=60, dur=1, ch=1, vel=127):
+    # 3 bytes of NON/NOF messages:
+    # [status byte, data byte 1, data byte 2]
+    # status byte, first hex digit: 8 for note off, 9 for note on
+    # data byte 1: pitch, data byte 2: velocity
+    ch -= 1
+    non_msg = (NOTE_ON + ch, keynum, vel)
+    nof_msg = (NOTE_OFF + ch, keynum, vel)
+    fpart, ipart = modf(keynum)
+    # https://sites.uci.edu/camp2014/2014/04/30/managing-midi-pitchbend-messages/
+    bend_center = 8192
+    bend_max = 16384
+    semitone_bend_range = (bend_max - bend_center) / 2
+    bend_val = bend_center + int(fpart * semitone_bend_range)
+    bend_msg = [PITCH_BEND + ch, bend_val & 0x7f, (bend_val >> 7) & 0x7f]
+    bend_reset_msg = [PITCH_BEND + ch, bend_center & 0x7f, (bend_center >> 7) & 0x7f]
     try:
-        MOUT.send_message(non)
+        # MOUT.send_message(bend_msg)
+        MOUT.send_message(non_msg)
         time.sleep(dur)
     finally:
-        MOUT.send_message(nof)
+        MOUT.send_message(nof_msg)
+        # MOUT.send_message(bend_reset_msg)
+        # MOUT.send_message([CONTROL_CHANGE + ch, 0, 0])
 
 def play_chord(notes=[60], dur=1, ch=1,vel=127, out=MOUT):
     count = len(notes)
@@ -97,11 +115,18 @@ def _is_wanted_port(port_name):
     port_name = port_name.lower()
     return all([pid.lower() in port_name for pid in cfg.MPIDS])
 
+# Use only when really not need the mout
+def cleanup():
+    global MOUT
+    print(f"Killing {MOUT}")
+    MOUT.delete()
 
 # This is the main function to use should probably not be here!.
-def run(func):
-    """Run the func and cleanup the shit."""
-    global MOUT
+def run(func, script=True):
+    """Run the func and cleanup. If running from inside a script
+    also dealloc the MOUT object. run should be given one single
+    func which is your composition, don't call it multiple times
+    via iteration etc."""
     ports = MOUT.get_ports()
     # connect to the desired port
     if ports:
@@ -112,19 +137,20 @@ def run(func):
         port = MOUT.open_port(port_idx, name=MOUT.get_port_name(port_idx))
     else:
         port = MOUT.open_virtual_port("Computil Virtual Output")
-    with (port):
+    with port:
         try:
             func()
-        finally:
+        except (EOFError, KeyboardInterrupt):
+            # if interrupted while running function, panic!
+            print("Panic!")
             for channel in range(16):
                 MOUT.send_message([CONTROL_CHANGE, ALL_SOUND_OFF, 0])
                 MOUT.send_message([CONTROL_CHANGE, RESET_ALL_CONTROLLERS, 0])
                 time.sleep(0.05)
+        finally:
+            if script: # don't if in the python shell
+                cleanup()
 
-# Use only when really not need the mout
-def cleanup():
-    global MOUT
-    MOUT.delete()
 
 # Note names
 G3 = 55
@@ -149,4 +175,9 @@ def trem():
 
 
 if __name__ == "__main__":
-    run(trem)
+    def f():
+        for _ in range(100):
+            for i in range(100):
+                play_note(10+i, dur=0.1)
+            time.sleep(0.2)
+    run(f)

@@ -1,3 +1,3 @@
 
 # Midi Port Identifier
-MPIDS = ("zynadd", "input")
+MPIDS = ("yoshimi")

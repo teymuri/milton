@@ -12,9 +12,8 @@ from rtmidi.midiconstants import (
 # from . import cfg
 import cfg
 
-
-MOUT = rtmidi.MidiOut(rtmidi.API_UNIX_JACK, name="Computil Client")
-# cfg.MPIDS = ("zyn", "input")
+MOUT = rtmidi.MidiOut(name="Computil Client", rtapi=rtmidi.API_LINUX_ALSA)
+cfg.MPIDS = ("yoshimi")
 def play_note(keynum=60, dur=1, ch=1, vel=127):
     # 3 bytes of NON/NOF messages:
     # [status byte, data byte 1, data byte 2]
@@ -34,9 +33,8 @@ def play_note(keynum=60, dur=1, ch=1, vel=127):
     try:
         # MOUT.send_message(bend_msg)
         MOUT.send_message(non_msg)
-    finally:
-        print("fin")
         time.sleep(dur)
+    finally:
         MOUT.send_message(nof_msg)
         # MOUT.send_message(bend_reset_msg)
         # MOUT.send_message([CONTROL_CHANGE + ch, 0, 0])
@@ -124,7 +122,7 @@ def cleanup():
 
 # This is the main function to use should probably not be here!.
 def run(func):
-    """Run the func and cleanup the shit."""
+    """Run the func and cleanup"""
     ports = MOUT.get_ports()
     # connect to the desired port
     if ports:
@@ -135,11 +133,13 @@ def run(func):
         port = MOUT.open_port(port_idx, name=MOUT.get_port_name(port_idx))
     else:
         port = MOUT.open_virtual_port("Computil Virtual Output")
-    with (port):
+
+    with port:
         try:
             func()
-        except KeyboardInterrupt:
+        except (EOFError, KeyboardInterrupt):
             # if interrupted while running function, panic!
+            print("Panic!")
             for channel in range(16):
                 MOUT.send_message([CONTROL_CHANGE, ALL_SOUND_OFF, 0])
                 MOUT.send_message([CONTROL_CHANGE, RESET_ALL_CONTROLLERS, 0])
@@ -171,6 +171,4 @@ def trem():
 
 
 if __name__ == "__main__":
-    # for i in range(10):
-    #     run(lambda: play_note(60 + (i/10), dur=0.1))
-    run(lambda: play_note(60, dur=0.1))
+    run(lambda: play_note(60, dur=1))

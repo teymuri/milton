@@ -114,6 +114,11 @@ def _is_wanted_port(port_name):
     port_name = port_name.lower()
     return all([pid.lower() in port_name for pid in cfg.MPIDS])
 
+# Use only when really not need the mout
+def cleanup():
+    global MOUT
+    print(f"Killing {MOUT}")
+    MOUT.delete()
 
 # This is the main function to use should probably not be here!.
 def run_session(func, script=True):

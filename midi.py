@@ -13,6 +13,7 @@ from rtmidi.midiconstants import (
 import cfg
 
 MOUT = rtmidi.MidiOut(name="Computil Client", rtapi=rtmidi.API_LINUX_ALSA)
+cfg.MPIDS=("zynadd")
 
 
 def play_note(keynum=60, dur=1, ch=1, vel=127):
@@ -23,22 +24,20 @@ def play_note(keynum=60, dur=1, ch=1, vel=127):
     ch -= 1
     non_msg = (NOTE_ON + ch, keynum, vel)
     nof_msg = (NOTE_OFF + ch, keynum, vel)
-    fpart, ipart = modf(keynum)
-    # https://sites.uci.edu/camp2014/2014/04/30/managing-midi-pitchbend-messages/
-    bend_center = 8192
-    bend_max = 16384
-    semitone_bend_range = (bend_max - bend_center) / 2
-    bend_val = bend_center + int(fpart * semitone_bend_range)
+    fpart, _ = modf(keynum)
+    no_bend_val = 8192
+    semitone_bend_range = 4096
+    # note that crazy fractional parts could result in loss of information(because of int)
+    bend_val = no_bend_val + int(fpart * semitone_bend_range)
     bend_msg = [PITCH_BEND + ch, bend_val & 0x7f, (bend_val >> 7) & 0x7f]
-    bend_reset_msg = [PITCH_BEND + ch, bend_center & 0x7f, (bend_center >> 7) & 0x7f]
+    bend_reset_msg = [PITCH_BEND + ch, no_bend_val & 0x7f, (no_bend_val >> 7) & 0x7f]
     try:
-        # MOUT.send_message(bend_msg)
+        MOUT.send_message(bend_msg)
         MOUT.send_message(non_msg)
         time.sleep(dur)
     finally:
         MOUT.send_message(nof_msg)
-        # MOUT.send_message(bend_reset_msg)
-        # MOUT.send_message([CONTROL_CHANGE + ch, 0, 0])
+        MOUT.send_message(bend_reset_msg)
 
 def play_chord(notes=[60], dur=1, ch=1,vel=127, out=MOUT):
     count = len(notes)
@@ -117,7 +116,7 @@ def _is_wanted_port(port_name):
 
 
 # This is the main function to use should probably not be here!.
-def run(func, script=True):
+def run_session(func, script=True):
     """Run the func and cleanup. If running from inside a script
     also dealloc the MOUT object. run should be given one single
     func which is your composition, don't call it multiple times
@@ -173,9 +172,11 @@ def trem():
 
 
 if __name__ == "__main__":
+    from random import choice
     def f():
-        for _ in range(10):
-            for i in range(10):
-                play_note(60+i, dur=0.05)
-            time.sleep(0.2)
-    run(f)
+        for _ in range(100):
+            for i in range(100):
+                play_note(10+i+choice([0, 0.5, 0.25, 0.75]), dur=0.1, vel=70)
+            time.sleep(0.1)
+
+    run_session(f)

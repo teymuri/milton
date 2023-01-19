@@ -115,11 +115,6 @@ def _is_wanted_port(port_name):
     port_name = port_name.lower()
     return all([pid.lower() in port_name for pid in cfg.MPIDS])
 
-# Use only when really not need the mout
-def cleanup():
-    global MOUT
-    print(f"Killing {MOUT}")
-    MOUT.delete()
 
 # This is the main function to use should probably not be here!.
 def run(func, script=True):
@@ -127,6 +122,7 @@ def run(func, script=True):
     also dealloc the MOUT object. run should be given one single
     func which is your composition, don't call it multiple times
     via iteration etc."""
+    global MOUT
     ports = MOUT.get_ports()
     # connect to the desired port
     if ports:
@@ -148,8 +144,9 @@ def run(func, script=True):
                 MOUT.send_message([CONTROL_CHANGE, RESET_ALL_CONTROLLERS, 0])
                 time.sleep(0.05)
         finally:
-            if script: # don't if in the python shell
-                cleanup()
+            if script: # don't if in the python shell, as the midiout might still be needed
+                # de-allocating pointer to c++ instance
+                MOUT.delete()
 
 
 # Note names
@@ -176,8 +173,8 @@ def trem():
 
 if __name__ == "__main__":
     def f():
-        for _ in range(100):
-            for i in range(100):
-                play_note(10+i, dur=0.1)
+        for _ in range(10):
+            for i in range(10):
+                play_note(60+i, dur=0.05)
             time.sleep(0.2)
     run(f)

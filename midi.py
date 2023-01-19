@@ -138,13 +138,14 @@ def run(func, script=True):
             func()
         except (EOFError, KeyboardInterrupt):
             # if interrupted while running function, panic!
-            print("Panic!")
+            print("\npanic!")
             for channel in range(16):
                 MOUT.send_message([CONTROL_CHANGE, ALL_SOUND_OFF, 0])
                 MOUT.send_message([CONTROL_CHANGE, RESET_ALL_CONTROLLERS, 0])
                 time.sleep(0.05)
         finally:
             if script: # don't if in the python shell, as the midiout might still be needed
+                print("cleaning up...")
                 # de-allocating pointer to c++ instance
                 MOUT.delete()
 

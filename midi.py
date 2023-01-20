@@ -27,10 +27,10 @@ def hz_to_knum(hz):
 
 def _get_bend_msgs(knum, ch):
     ch -= 1
-    fpart, ipart = modf(knum)
+    _, ipart = modf(knum)
     # bend_val = NO_BEND_VAL + int(2**(fpart/12) * SEMITONE_BEND_RANGE)
     bend_val = NO_BEND_VAL + NO_BEND_VAL * (12 / cfg.BEND_RANGE) * log2(knum_to_hz(knum) / knum_to_hz(ipart))
-    # note that crazy fractional parts could result in loss of information(because of int)
+    # note that crazy fractional parts could result in loss of information(because of rounding)
     bend_val = round(bend_val)
     bend_msg = (PITCH_BEND + ch, bend_val & 0x7f, (bend_val >> 7) & 0x7f)
     bend_reset_msg = (PITCH_BEND + ch, NO_BEND_RESET_LSB, NO_BEND_RESET_MSB)

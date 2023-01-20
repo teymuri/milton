@@ -17,7 +17,6 @@ NO_BEND_RESET_LSB = NO_BEND_VAL & 0x7f # isthis msb or lsb for send_message?!??
 NO_BEND_RESET_MSB = (NO_BEND_VAL >> 7) & 0x7f
 SEMITONE_BEND_RANGE = 4096
 
-# cfg.MPIDS=("zynadd")
 def keynum_to_hz(keynum):
     return 440 * 2 ** ((keynum - 69) / 12.)
 
@@ -28,10 +27,10 @@ def hz_to_keynum(hz):
 
 def _get_bend_msgs(keynum, ch):
     ch -= 1
-    # note that crazy fractional parts could result in loss of information(because of int)
     fpart, ipart = modf(keynum)
     # bend_val = NO_BEND_VAL + int(2**(fpart/12) * SEMITONE_BEND_RANGE)
     bend_val = NO_BEND_VAL + NO_BEND_VAL * (12/cfg.BEND_RANGE) * log2(keynum_to_hz(keynum) / keynum_to_hz(ipart))
+    # note that crazy fractional parts could result in loss of information(because of int)
     bend_val = round(bend_val)
     bend_msg = (PITCH_BEND + ch, bend_val & 0x7f, (bend_val >> 7) & 0x7f)
     bend_reset_msg = (PITCH_BEND + ch, NO_BEND_RESET_LSB, NO_BEND_RESET_MSB)
@@ -39,7 +38,7 @@ def _get_bend_msgs(keynum, ch):
 
 def _get_non_nof_msgs(keynum, ch, vel):
     ch -= 1
-    # the fractional part goes into the bend message
+    # don't need the fract part here, the fractional part goes into the bend message
     _, keynum = modf(keynum)
     keynum = int(keynum)
     # 3 bytes of NON/NOF messages:
@@ -220,15 +219,13 @@ if __name__ == "__main__":
     #             play_note(k+m)
     #
     def f():
-        for i in range(15):
+        for i in range(20):
             i += 1
-            f = 200
+            f = 100
             print(i, hz_to_keynum(f * i))
-            play_note(hz_to_keynum(f * i), dur=0.3)
-        # play_note(69, dur=2)
-        # play_note(69.25, dur=2)
-        # play_note(69 + 1/7, dur=1000, vel=70)
-        # play_note(69.75, dur=2)
-        # play_note(70, dur=2)
+            play_note(hz_to_keynum(f * i), dur=0.1)
+        # play_note(69.5, dur=2000, vel=120)
+        # for _ in range(1600):
+        #     play_note(70, vel=110)
 
     proc(f)

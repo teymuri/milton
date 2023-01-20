@@ -1,36 +1,58 @@
-#!/usr/bin/env python
-
 import time
 import rtmidi
 import asyncio
-from math import modf
+from math import (modf, log2)
 from rtmidi.midiconstants import (
     NOTE_OFF, NOTE_ON, PITCH_BEND,
     ALL_SOUND_OFF, CONTROL_CHANGE,
     RESET_ALL_CONTROLLERS
 )
+import err
 # from . import cfg
 import cfg
 
 MOUT = rtmidi.MidiOut(name="Computil Client", rtapi=rtmidi.API_LINUX_ALSA)
-cfg.MPIDS=("zynadd")
+NO_BEND_VAL = 8192
+NO_BEND_RESET_LSB = NO_BEND_VAL & 0x7f # isthis msb or lsb for send_message?!??
+NO_BEND_RESET_MSB = (NO_BEND_VAL >> 7) & 0x7f
+SEMITONE_BEND_RANGE = 4096
 
+# cfg.MPIDS=("zynadd")
+def keynum_to_hz(keynum):
+    return 440 * 2 ** ((keynum - 69) / 12.)
 
-def play_note(keynum=60, dur=1, ch=1, vel=127):
+def hz_to_keynum(hz):
+    if hz == 0:
+        raise err.ComputilZeroHertzError()
+    return 12 * (log2(hz) - log2(440)) + 69
+
+def _get_bend_msgs(keynum, ch):
+    ch -= 1
+    # note that crazy fractional parts could result in loss of information(because of int)
+    fpart, ipart = modf(keynum)
+    # bend_val = NO_BEND_VAL + int(2**(fpart/12) * SEMITONE_BEND_RANGE)
+    bend_val = NO_BEND_VAL + NO_BEND_VAL * (12/cfg.BEND_RANGE) * log2(keynum_to_hz(keynum) / keynum_to_hz(ipart))
+    bend_val = round(bend_val)
+    bend_msg = (PITCH_BEND + ch, bend_val & 0x7f, (bend_val >> 7) & 0x7f)
+    bend_reset_msg = (PITCH_BEND + ch, NO_BEND_RESET_LSB, NO_BEND_RESET_MSB)
+    return bend_msg, bend_reset_msg
+
+def _get_non_nof_msgs(keynum, ch, vel):
+    ch -= 1
+    # the fractional part goes into the bend message
+    _, keynum = modf(keynum)
+    keynum = int(keynum)
     # 3 bytes of NON/NOF messages:
     # [status byte, data byte 1, data byte 2]
     # status byte, first hex digit: 8 for note off, 9 for note on
     # data byte 1: pitch, data byte 2: velocity
-    ch -= 1
     non_msg = (NOTE_ON + ch, keynum, vel)
     nof_msg = (NOTE_OFF + ch, keynum, vel)
-    fpart, _ = modf(keynum)
-    no_bend_val = 8192
-    semitone_bend_range = 4096
-    # note that crazy fractional parts could result in loss of information(because of int)
-    bend_val = no_bend_val + int(fpart * semitone_bend_range)
-    bend_msg = [PITCH_BEND + ch, bend_val & 0x7f, (bend_val >> 7) & 0x7f]
-    bend_reset_msg = [PITCH_BEND + ch, no_bend_val & 0x7f, (no_bend_val >> 7) & 0x7f]
+    return non_msg, nof_msg
+    
+def play_note(keynum=60, dur=1, ch=1, vel=127):
+    non_msg, nof_msg = _get_non_nof_msgs(keynum, ch, vel)
+    bend_msg, bend_reset_msg = _get_bend_msgs(keynum, ch)
     try:
         MOUT.send_message(bend_msg)
         MOUT.send_message(non_msg)
@@ -114,17 +136,13 @@ def _is_wanted_port(port_name):
     port_name = port_name.lower()
     return all([pid.lower() in port_name for pid in cfg.MPIDS])
 
-# Use only when really not need the mout
-def cleanup():
-    global MOUT
-    print(f"Killing {MOUT}")
-    MOUT.delete()
 
 # This is the main function to use should probably not be here!.
-def run_session(func, script=True):
-    """Run the func and cleanup. If running from inside a script
-    also dealloc the MOUT object. run should be given one single
-    func which is your composition, don't call it multiple times
+def proc(func, script=True):
+    """Run the func, processing the rtmidi calls and cleanup if called from within a script.
+    If running from inside a script also dealloc the MOUT object.
+    proc should be given one single
+    func which is your whole composition, don't call it multiple times
     via iteration etc."""
     global MOUT
     ports = MOUT.get_ports()
@@ -147,9 +165,11 @@ def run_session(func, script=True):
                 MOUT.send_message([CONTROL_CHANGE, ALL_SOUND_OFF, 0])
                 MOUT.send_message([CONTROL_CHANGE, RESET_ALL_CONTROLLERS, 0])
                 time.sleep(0.05)
+        except (err.ComputilZeroHertzError):
+            print("can't convert 0 hz to midi keynum")
         finally:
             if script: # don't if in the python shell, as the midiout might still be needed
-                print("cleaning up...")
+                print("finished processing, cleaning up...")
                 # de-allocating pointer to c++ instance
                 MOUT.delete()
 
@@ -178,10 +198,37 @@ def trem():
 
 if __name__ == "__main__":
     from random import choice
-    def f():
-        for _ in range(100):
-            for i in range(100):
-                play_note(10+i+choice([0, 0.5, 0.25, 0.75]), dur=0.1, vel=70)
-            time.sleep(0.1)
+    # def f():
+    #     for _ in range(10):
+    #         for i in range(1000):
+    #             # play_note(10+i+choice([0, 0.5, 0.25, 0.75]), dur=0.1, vel=70)
+    #             kn = 60 + i / 1000
+    #             print(kn)
+    #             play_note(kn, dur=0.05)
+    #         time.sleep(0.2)
 
-    run_session(f)
+    # def f():
+    #     for i in range(1000):
+    #         print(60+i/10)
+    #         play_note(60 + i/10, dur=1)
+    # #
+    # def f():
+    #     for k in range(60, 62):
+    #         for m in range(0, 10):
+    #             m /= 10
+    #             print(k, m)
+    #             play_note(k+m)
+    #
+    def f():
+        for i in range(15):
+            i += 1
+            f = 200
+            print(i, hz_to_keynum(f * i))
+            play_note(hz_to_keynum(f * i), dur=0.3)
+        # play_note(69, dur=2)
+        # play_note(69.25, dur=2)
+        # play_note(69 + 1/7, dur=1000, vel=70)
+        # play_note(69.75, dur=2)
+        # play_note(70, dur=2)
+
+    proc(f)

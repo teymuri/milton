@@ -12,46 +12,46 @@ import err
 import cfg
 
 MOUT = rtmidi.MidiOut(name="Computil Client", rtapi=rtmidi.API_LINUX_ALSA)
-NO_BEND_VAL = 8192
+NO_BEND_VAL = 2 ** 13
 NO_BEND_RESET_LSB = NO_BEND_VAL & 0x7f # isthis msb or lsb for send_message?!??
 NO_BEND_RESET_MSB = (NO_BEND_VAL >> 7) & 0x7f
 SEMITONE_BEND_RANGE = 4096
 
-def keynum_to_hz(keynum):
-    return 440 * 2 ** ((keynum - 69) / 12.)
+def knum_to_hz(knum):
+    return 440 * 2 ** ((knum - 69) / 12.)
 
-def hz_to_keynum(hz):
+def hz_to_knum(hz):
     if hz == 0:
         raise err.ComputilZeroHertzError()
     return 12 * (log2(hz) - log2(440)) + 69
 
-def _get_bend_msgs(keynum, ch):
+def _get_bend_msgs(knum, ch):
     ch -= 1
-    fpart, ipart = modf(keynum)
+    fpart, ipart = modf(knum)
     # bend_val = NO_BEND_VAL + int(2**(fpart/12) * SEMITONE_BEND_RANGE)
-    bend_val = NO_BEND_VAL + NO_BEND_VAL * (12/cfg.BEND_RANGE) * log2(keynum_to_hz(keynum) / keynum_to_hz(ipart))
+    bend_val = NO_BEND_VAL + NO_BEND_VAL * (12 / cfg.BEND_RANGE) * log2(knum_to_hz(knum) / knum_to_hz(ipart))
     # note that crazy fractional parts could result in loss of information(because of int)
     bend_val = round(bend_val)
     bend_msg = (PITCH_BEND + ch, bend_val & 0x7f, (bend_val >> 7) & 0x7f)
     bend_reset_msg = (PITCH_BEND + ch, NO_BEND_RESET_LSB, NO_BEND_RESET_MSB)
     return bend_msg, bend_reset_msg
 
-def _get_non_nof_msgs(keynum, ch, vel):
+def _get_non_nof_msgs(knum, ch, vel):
     ch -= 1
     # don't need the fract part here, the fractional part goes into the bend message
-    _, keynum = modf(keynum)
-    keynum = int(keynum)
+    _, knum = modf(knum)
+    knum = int(knum)
     # 3 bytes of NON/NOF messages:
     # [status byte, data byte 1, data byte 2]
     # status byte, first hex digit: 8 for note off, 9 for note on
     # data byte 1: pitch, data byte 2: velocity
-    non_msg = (NOTE_ON + ch, keynum, vel)
-    nof_msg = (NOTE_OFF + ch, keynum, vel)
+    non_msg = (NOTE_ON + ch, knum, vel)
+    nof_msg = (NOTE_OFF + ch, knum, vel)
     return non_msg, nof_msg
     
-def play_note(keynum=60, dur=1, ch=1, vel=127):
-    non_msg, nof_msg = _get_non_nof_msgs(keynum, ch, vel)
-    bend_msg, bend_reset_msg = _get_bend_msgs(keynum, ch)
+def play_note(knum=60, dur=1, ch=1, vel=127):
+    non_msg, nof_msg = _get_non_nof_msgs(knum, ch, vel)
+    bend_msg, bend_reset_msg = _get_bend_msgs(knum, ch)
     try:
         MOUT.send_message(bend_msg)
         MOUT.send_message(non_msg)
@@ -165,7 +165,7 @@ def proc(func, script=True):
                 MOUT.send_message([CONTROL_CHANGE, RESET_ALL_CONTROLLERS, 0])
                 time.sleep(0.05)
         except (err.ComputilZeroHertzError):
-            print("can't convert 0 hz to midi keynum")
+            print("can't convert 0 hz to midi knum")
         finally:
             if script: # don't if in the python shell, as the midiout might still be needed
                 print("finished processing, cleaning up...")
@@ -222,8 +222,8 @@ if __name__ == "__main__":
         for i in range(20):
             i += 1
             f = 100
-            print(i, hz_to_keynum(f * i))
-            play_note(hz_to_keynum(f * i), dur=0.1)
+            print(i, hz_to_knum(f * i))
+            play_note(hz_to_knum(f * i), dur=0.3)
         # play_note(69.5, dur=2000, vel=120)
         # for _ in range(1600):
         #     play_note(70, vel=110)

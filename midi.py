@@ -10,9 +10,9 @@ from rtmidi.midiconstants import (
 import err
 # from . import cfg
 import cfg
-# cfg.MPIDS=("zynadd",)
 
 
+cfg.port_ids=("fluid")
 
 
 MOUT = rtmidi.MidiOut(name="Computil Client", rtapi=rtmidi.API_LINUX_ALSA)
@@ -20,7 +20,7 @@ NO_BEND_VAL = 2 ** 13
 NO_BEND_RESET_LSB = NO_BEND_VAL & 0x7f # isthis msb or lsb for send_message?!??
 NO_BEND_RESET_MSB = (NO_BEND_VAL >> 7) & 0x7f
 SEMITONE_BEND_RANGE = 4096
-
+# todo: support more channels through more tracks/ports?
 _chnls_pool = set(range(16))
 
 
@@ -83,17 +83,17 @@ def play_note(knum=60, dur=1, ch=1, vel=127):
         # put the ch back in the pool
         _chnls_pool.add(ch)
 
-def play_chord(notes=[60], dur=1, ch=1,vel=127, out=MOUT):
-    count = len(notes)
-    on_msgs = [[NOTE_ON + ch - 1, n, vel] for n in notes]
-    off_msgs = [[NOTE_OFF + ch - 1, n, vel] for n in notes]
+def play_chord(knums=[60], dur=1, ch=1, vel=127):
+    count = len(knums)
+    on_msgs = [[NOTE_ON + ch - 1, n, vel] for n in knums]
+    off_msgs = [[NOTE_OFF + ch - 1, n, vel] for n in knums]
     try:
         for i in range(count):
-            out.send_message(on_msgs[i])
+            MOUT.send_message(on_msgs[i])
         time.sleep(dur)
     finally:
         for i in range(count):
-            out.send_message(off_msgs[i])
+            MOUT.send_message(off_msgs[i])
 
 
 async def _play_voice(pitches, durs, ch, vels, out, show):
@@ -156,7 +156,7 @@ def piccolo():
 
 def _is_wanted_port(port_name):    
     port_name = port_name.lower()
-    return all([pid.lower() in port_name for pid in cfg.MPIDS])
+    return all([pid.lower() in port_name for pid in cfg.port_ids])
 
 
 # This is the main function to use should probably not be here!.
@@ -257,7 +257,11 @@ if __name__ == "__main__":
         # for _ in range(1600):
         #     play_note(70, vel=110)
 
-    # def f():
-    #     play_note(60.5)
+    def f():
+        play_note(60)
+        play_note(60.25,ch=2)
+        play_note(60.5, ch=3)
+        play_note(60.75, ch=4)
+        play_note(61, ch=5)
 
     proc(f)

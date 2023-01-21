@@ -11,11 +11,18 @@ import err
 # from . import cfg
 import cfg
 # cfg.MPIDS=("zynadd",)
+
+
+
+
 MOUT = rtmidi.MidiOut(name="Computil Client", rtapi=rtmidi.API_LINUX_ALSA)
 NO_BEND_VAL = 2 ** 13
 NO_BEND_RESET_LSB = NO_BEND_VAL & 0x7f # isthis msb or lsb for send_message?!??
 NO_BEND_RESET_MSB = (NO_BEND_VAL >> 7) & 0x7f
 SEMITONE_BEND_RANGE = 4096
+
+_chnls_pool = set(range(16))
+
 
 def knum_to_hz(knum):
     return 440 * 2 ** ((knum - 69) / 12.)
@@ -25,42 +32,56 @@ def hz_to_knum(hz):
         raise err.ComputilZeroHertzError()
     return 12 * (log2(hz) - log2(440)) + 69
 
-def _get_bend_msgs(knum, ch):
-    ch -= 1
-    _, ipart = modf(knum)
-    # bend_val = NO_BEND_VAL + int(2**(fpart/12) * SEMITONE_BEND_RANGE)
-    bend_val = NO_BEND_VAL + NO_BEND_VAL * (12 / cfg.BEND_RANGE) * log2(knum_to_hz(knum) / knum_to_hz(ipart))
+def _get_bend_msgs(knum, knum_ipart, ch):
+    bend_val = NO_BEND_VAL + NO_BEND_VAL * (12 / cfg.BEND_RANGE) * log2(knum_to_hz(knum) / knum_to_hz(knum_ipart))
     # note that crazy fractional parts could result in loss of information(because of rounding)
     bend_val = round(bend_val)
     bend_msg = (PITCH_BEND + ch, bend_val & 0x7f, (bend_val >> 7) & 0x7f)
     bend_reset_msg = (PITCH_BEND + ch, NO_BEND_RESET_LSB, NO_BEND_RESET_MSB)
     return bend_msg, bend_reset_msg
 
-def _get_non_nof_msgs(knum, ch, vel):
-    ch -= 1
+def _get_non_nof_msgs(knum_ipart, ch, vel):
     # don't need the fract part here, the fractional part goes into the bend message
-    _, knum = modf(knum)
-    knum = int(knum)
     # 3 bytes of NON/NOF messages:
     # [status byte, data byte 1, data byte 2]
     # status byte, first hex digit: 8 for note off, 9 for note on
     # data byte 1: pitch, data byte 2: velocity
-    non_msg = (NOTE_ON + ch, knum, vel)
+    non_msg = (NOTE_ON + ch, knum_ipart, vel)
     # http://www.music-software-development.com/midi-tutorial.html
     # the vel is the release velocity, by default set it to 0
-    nof_msg = (NOTE_OFF + ch, knum, 0)
+    nof_msg = (NOTE_OFF + ch, knum_ipart, 0)
     return non_msg, nof_msg
     
+
+def _is_chnl_in_use(ch):
+    if ch not in _chnls_pool:
+        return True
+    else:
+        return False
+
 def play_note(knum=60, dur=1, ch=1, vel=127):
-    non_msg, nof_msg = _get_non_nof_msgs(knum, ch, vel)
-    bend_msg, bend_reset_msg = _get_bend_msgs(knum, ch)
+    global _chnls_pool
+    fpart, ipart = modf(knum)
+    ipart = int(ipart)
+    ch -= 1 # convert from user-perspective to midi-perspective
+    if fpart: # do not just fuck with the ch!
+        if _is_chnl_in_use(ch): # then pick up another ch
+            ch = _chnls_pool.pop()
+        bend_msg, bend_reset_msg = _get_bend_msgs(knum, ipart, ch)
+    else: # mark ch as in use
+        _chnls_pool.remove(ch)
+    non_msg, nof_msg = _get_non_nof_msgs(ipart, ch, vel)
     try:
-        MOUT.send_message(bend_msg)
+        if fpart: # needs microtonal channel adjustment
+            MOUT.send_message(bend_msg)
         MOUT.send_message(non_msg)
         time.sleep(dur)
     finally:
         MOUT.send_message(nof_msg)
-        MOUT.send_message(bend_reset_msg)
+        if fpart: # reset channel microtuning
+            MOUT.send_message(bend_reset_msg)
+        # put the ch back in the pool
+        _chnls_pool.add(ch)
 
 def play_chord(notes=[60], dur=1, ch=1,vel=127, out=MOUT):
     count = len(notes)
@@ -226,13 +247,17 @@ if __name__ == "__main__":
     #             play_note(k+m)
     #
     def f():
-        for i in range(20):
-            i += 1
-            f = 100
-            print(i, hz_to_knum(f * i))
-            play_note(hz_to_knum(f * i), dur=0.1)
+        for i in range(10000):
+            i /= 100
+            fr = 30
+            print(fr+i)
+            # play_note(hz_to_knum(fr * i), dur=0.01)
+            play_note(fr+i,dur=0.01)
         # play_note(69.5, dur=2000, vel=120)
         # for _ in range(1600):
         #     play_note(70, vel=110)
+
+    # def f():
+    #     play_note(60.5)
 
     proc(f)

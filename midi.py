@@ -1,55 +1,99 @@
-#!/usr/bin/env python
-
 import time
 import rtmidi
 import asyncio
-from math import modf
+from math import (modf, log2)
 from rtmidi.midiconstants import (
     NOTE_OFF, NOTE_ON, PITCH_BEND,
     ALL_SOUND_OFF, CONTROL_CHANGE,
     RESET_ALL_CONTROLLERS
 )
+import err
 # from . import cfg
 import cfg
 
+
+cfg.port_ids=("fluid")
+
+
 MOUT = rtmidi.MidiOut(name="Computil Client", rtapi=rtmidi.API_LINUX_ALSA)
-cfg.MPIDS=("zynadd")
+NO_BEND_VAL = 2 ** 13
+NO_BEND_RESET_LSB = NO_BEND_VAL & 0x7f # isthis msb or lsb for send_message?!??
+NO_BEND_RESET_MSB = (NO_BEND_VAL >> 7) & 0x7f
+SEMITONE_BEND_RANGE = 4096
+# todo: support more channels through more tracks/ports?
+_chnls_pool = set(range(16))
 
 
-def play_note(keynum=60, dur=1, ch=1, vel=127):
+def knum_to_hz(knum):
+    return 440 * 2 ** ((knum - 69) / 12.)
+
+def hz_to_knum(hz):
+    if hz == 0:
+        raise err.ComputilZeroHertzError()
+    return 12 * (log2(hz) - log2(440)) + 69
+
+def _get_bend_msgs(knum, knum_ipart, ch):
+    bend_val = NO_BEND_VAL + NO_BEND_VAL * (12 / cfg.BEND_RANGE) * log2(knum_to_hz(knum) / knum_to_hz(knum_ipart))
+    # note that crazy fractional parts could result in loss of information(because of rounding)
+    bend_val = round(bend_val)
+    bend_msg = (PITCH_BEND + ch, bend_val & 0x7f, (bend_val >> 7) & 0x7f)
+    bend_reset_msg = (PITCH_BEND + ch, NO_BEND_RESET_LSB, NO_BEND_RESET_MSB)
+    return bend_msg, bend_reset_msg
+
+def _get_non_nof_msgs(knum_ipart, ch, vel):
+    # don't need the fract part here, the fractional part goes into the bend message
     # 3 bytes of NON/NOF messages:
     # [status byte, data byte 1, data byte 2]
     # status byte, first hex digit: 8 for note off, 9 for note on
     # data byte 1: pitch, data byte 2: velocity
-    ch -= 1
-    non_msg = (NOTE_ON + ch, keynum, vel)
-    nof_msg = (NOTE_OFF + ch, keynum, vel)
-    fpart, _ = modf(keynum)
-    no_bend_val = 8192
-    semitone_bend_range = 4096
-    # note that crazy fractional parts could result in loss of information(because of int)
-    bend_val = no_bend_val + int(fpart * semitone_bend_range)
-    bend_msg = [PITCH_BEND + ch, bend_val & 0x7f, (bend_val >> 7) & 0x7f]
-    bend_reset_msg = [PITCH_BEND + ch, no_bend_val & 0x7f, (no_bend_val >> 7) & 0x7f]
+    non_msg = (NOTE_ON + ch, knum_ipart, vel)
+    # http://www.music-software-development.com/midi-tutorial.html
+    # the vel is the release velocity, by default set it to 0
+    nof_msg = (NOTE_OFF + ch, knum_ipart, 0)
+    return non_msg, nof_msg
+    
+
+def _is_chnl_in_use(ch):
+    if ch not in _chnls_pool:
+        return True
+    else:
+        return False
+
+def play_note(knum=60, dur=1, ch=1, vel=127):
+    global _chnls_pool
+    fpart, ipart = modf(knum)
+    ipart = int(ipart)
+    ch -= 1 # convert from user-perspective to midi-perspective
+    if fpart: # do not just fuck with the ch!
+        if _is_chnl_in_use(ch): # then pick up another ch
+            ch = _chnls_pool.pop()
+        bend_msg, bend_reset_msg = _get_bend_msgs(knum, ipart, ch)
+    else: # mark ch as in use
+        _chnls_pool.remove(ch)
+    non_msg, nof_msg = _get_non_nof_msgs(ipart, ch, vel)
     try:
-        MOUT.send_message(bend_msg)
+        if fpart: # needs microtonal channel adjustment
+            MOUT.send_message(bend_msg)
         MOUT.send_message(non_msg)
         time.sleep(dur)
     finally:
         MOUT.send_message(nof_msg)
-        MOUT.send_message(bend_reset_msg)
+        if fpart: # reset channel microtuning
+            MOUT.send_message(bend_reset_msg)
+        # put the ch back in the pool
+        _chnls_pool.add(ch)
 
-def play_chord(notes=[60], dur=1, ch=1,vel=127, out=MOUT):
-    count = len(notes)
-    on_msgs = [[NOTE_ON + ch - 1, n, vel] for n in notes]
-    off_msgs = [[NOTE_OFF + ch - 1, n, vel] for n in notes]
+def play_chord(knums=[60], dur=1, ch=1, vel=127):
+    count = len(knums)
+    on_msgs = [[NOTE_ON + ch - 1, n, vel] for n in knums]
+    off_msgs = [[NOTE_OFF + ch - 1, n, vel] for n in knums]
     try:
         for i in range(count):
-            out.send_message(on_msgs[i])
+            MOUT.send_message(on_msgs[i])
         time.sleep(dur)
     finally:
         for i in range(count):
-            out.send_message(off_msgs[i])
+            MOUT.send_message(off_msgs[i])
 
 
 async def _play_voice(pitches, durs, ch, vels, out, show):
@@ -112,19 +156,15 @@ def piccolo():
 
 def _is_wanted_port(port_name):    
     port_name = port_name.lower()
-    return all([pid.lower() in port_name for pid in cfg.MPIDS])
+    return all([pid.lower() in port_name for pid in cfg.port_ids])
 
-# Use only when really not need the mout
-def cleanup():
-    global MOUT
-    print(f"Killing {MOUT}")
-    MOUT.delete()
 
 # This is the main function to use should probably not be here!.
-def run_session(func, script=True):
-    """Run the func and cleanup. If running from inside a script
-    also dealloc the MOUT object. run should be given one single
-    func which is your composition, don't call it multiple times
+def proc(func, script=True):
+    """Run the func, processing the rtmidi calls and cleanup if called from within a script.
+    If running from inside a script also dealloc the MOUT object.
+    proc should be given one single
+    func which is your whole composition, don't call it multiple times
     via iteration etc."""
     global MOUT
     ports = MOUT.get_ports()
@@ -143,15 +183,17 @@ def run_session(func, script=True):
         except (EOFError, KeyboardInterrupt):
             # if interrupted while running function, panic!
             print("\npanic!")
-            for channel in range(16):
-                MOUT.send_message([CONTROL_CHANGE, ALL_SOUND_OFF, 0])
-                MOUT.send_message([CONTROL_CHANGE, RESET_ALL_CONTROLLERS, 0])
+            for ch in range(16):
+                MOUT.send_message([CONTROL_CHANGE | ch, ALL_SOUND_OFF, 0])
+                MOUT.send_message([CONTROL_CHANGE | ch, RESET_ALL_CONTROLLERS, 0])
                 time.sleep(0.05)
-        finally:
-            if script: # don't if in the python shell, as the midiout might still be needed
-                print("cleaning up...")
-                # de-allocating pointer to c++ instance
-                MOUT.delete()
+        except (err.ComputilZeroHertzError):
+            print("can't convert 0 hz to midi knum")
+        # finally:
+        #     if script: # don't if in the python shell, as the midiout might still be needed
+        #         print("finished processing, cleaning up...")
+        #         # de-allocating pointer to c++ instance
+        #         # MOUT.delete()
 
 
 # Note names
@@ -177,11 +219,49 @@ def trem():
 
 
 if __name__ == "__main__":
-    from random import choice
+    from random import *
     def f():
-        for _ in range(100):
-            for i in range(100):
-                play_note(10+i+choice([0, 0.5, 0.25, 0.75]), dur=0.1, vel=70)
-            time.sleep(0.1)
+        for i in range(1000):
+            # play_note(10+i+choice([0, 0.5, 0.25, 0.75]), dur=0.1, vel=70)
+            kn = 30 + i / 100
+            d=uniform(0.05, 0.3)
+            print(kn, d)
+            play_note(kn, dur=d)
 
-    run_session(f)
+    def f():
+        for _ in range(10):
+            for i in range(20):
+                play_note(50 + i /5, dur=.01)
+            time.sleep(1)
+
+    # def f():
+    #     for i in range(1000):
+    #         print(60+i/10)
+    #         play_note(60 + i/10, dur=1)
+    # #
+    # def f():
+    #     for k in range(60, 62):
+    #         for m in range(0, 10):
+    #             m /= 10
+    #             print(k, m)
+    #             play_note(k+m)
+    #
+    def f():
+        for i in range(10000):
+            i /= 100
+            fr = 30
+            print(fr+i)
+            # play_note(hz_to_knum(fr * i), dur=0.01)
+            play_note(fr+i,dur=0.01)
+        # play_note(69.5, dur=2000, vel=120)
+        # for _ in range(1600):
+        #     play_note(70, vel=110)
+
+    def f():
+        play_note(60)
+        play_note(60.25,ch=2)
+        play_note(60.5, ch=3)
+        play_note(60.75, ch=4)
+        play_note(61, ch=5)
+
+    proc(f)

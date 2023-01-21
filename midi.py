@@ -10,7 +10,7 @@ from rtmidi.midiconstants import (
 import err
 # from . import cfg
 import cfg
-
+# cfg.MPIDS=("zynadd",)
 MOUT = rtmidi.MidiOut(name="Computil Client", rtapi=rtmidi.API_LINUX_ALSA)
 NO_BEND_VAL = 2 ** 13
 NO_BEND_RESET_LSB = NO_BEND_VAL & 0x7f # isthis msb or lsb for send_message?!??
@@ -46,7 +46,9 @@ def _get_non_nof_msgs(knum, ch, vel):
     # status byte, first hex digit: 8 for note off, 9 for note on
     # data byte 1: pitch, data byte 2: velocity
     non_msg = (NOTE_ON + ch, knum, vel)
-    nof_msg = (NOTE_OFF + ch, knum, vel)
+    # http://www.music-software-development.com/midi-tutorial.html
+    # the vel is the release velocity, by default set it to 0
+    nof_msg = (NOTE_OFF + ch, knum, 0)
     return non_msg, nof_msg
     
 def play_note(knum=60, dur=1, ch=1, vel=127):
@@ -166,11 +168,11 @@ def proc(func, script=True):
                 time.sleep(0.05)
         except (err.ComputilZeroHertzError):
             print("can't convert 0 hz to midi knum")
-        finally:
-            if script: # don't if in the python shell, as the midiout might still be needed
-                print("finished processing, cleaning up...")
-                # de-allocating pointer to c++ instance
-                MOUT.delete()
+        # finally:
+        #     if script: # don't if in the python shell, as the midiout might still be needed
+        #         print("finished processing, cleaning up...")
+        #         # de-allocating pointer to c++ instance
+        #         # MOUT.delete()
 
 
 # Note names
@@ -196,15 +198,20 @@ def trem():
 
 
 if __name__ == "__main__":
-    from random import choice
-    # def f():
-    #     for _ in range(10):
-    #         for i in range(1000):
-    #             # play_note(10+i+choice([0, 0.5, 0.25, 0.75]), dur=0.1, vel=70)
-    #             kn = 60 + i / 1000
-    #             print(kn)
-    #             play_note(kn, dur=0.05)
-    #         time.sleep(0.2)
+    from random import *
+    def f():
+        for i in range(1000):
+            # play_note(10+i+choice([0, 0.5, 0.25, 0.75]), dur=0.1, vel=70)
+            kn = 30 + i / 100
+            d=uniform(0.05, 0.3)
+            print(kn, d)
+            play_note(kn, dur=d)
+
+    def f():
+        for _ in range(10):
+            for i in range(20):
+                play_note(50 + i /5, dur=.01)
+            time.sleep(1)
 
     # def f():
     #     for i in range(1000):

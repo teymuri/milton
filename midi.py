@@ -162,9 +162,9 @@ def proc(func, script=True):
         except (EOFError, KeyboardInterrupt):
             # if interrupted while running function, panic!
             print("\npanic!")
-            for channel in range(16):
-                MOUT.send_message([CONTROL_CHANGE, ALL_SOUND_OFF, 0])
-                MOUT.send_message([CONTROL_CHANGE, RESET_ALL_CONTROLLERS, 0])
+            for ch in range(16):
+                MOUT.send_message([CONTROL_CHANGE | ch, ALL_SOUND_OFF, 0])
+                MOUT.send_message([CONTROL_CHANGE | ch, RESET_ALL_CONTROLLERS, 0])
                 time.sleep(0.05)
         except (err.ComputilZeroHertzError):
             print("can't convert 0 hz to midi knum")
@@ -230,7 +230,7 @@ if __name__ == "__main__":
             i += 1
             f = 100
             print(i, hz_to_knum(f * i))
-            play_note(hz_to_knum(f * i), dur=0.3)
+            play_note(hz_to_knum(f * i), dur=0.1)
         # play_note(69.5, dur=2000, vel=120)
         # for _ in range(1600):
         #     play_note(70, vel=110)

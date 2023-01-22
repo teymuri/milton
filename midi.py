@@ -1,18 +1,15 @@
 import time
 import rtmidi
 import asyncio
+import err
+import cfg
 from math import (modf, log2)
 from rtmidi.midiconstants import (
     NOTE_OFF, NOTE_ON, PITCH_BEND,
     ALL_SOUND_OFF, CONTROL_CHANGE,
     RESET_ALL_CONTROLLERS
 )
-import err
-# from . import cfg
-import cfg
 
-
-cfg.port_ids=("fluid")
 
 
 MOUT = rtmidi.MidiOut(name="Computil Client", rtapi=rtmidi.API_LINUX_ALSA)
@@ -33,7 +30,7 @@ def hz_to_knum(hz):
     return 12 * (log2(hz) - log2(440)) + 69
 
 def _get_bend_msgs(knum, knum_ipart, ch):
-    bend_val = NO_BEND_VAL + NO_BEND_VAL * (12 / cfg.BEND_RANGE) * log2(knum_to_hz(knum) / knum_to_hz(knum_ipart))
+    bend_val = NO_BEND_VAL + NO_BEND_VAL * (12 / cfg.bend_range) * log2(knum_to_hz(knum) / knum_to_hz(knum_ipart))
     # note that crazy fractional parts could result in loss of information(because of rounding)
     bend_val = round(bend_val)
     bend_msg = (PITCH_BEND + ch, bend_val & 0x7f, (bend_val >> 7) & 0x7f)
@@ -156,7 +153,7 @@ def piccolo():
 
 def _is_wanted_port(port_name):    
     port_name = port_name.lower()
-    return all([pid.lower() in port_name for pid in cfg.port_ids])
+    return all([pid.lower() in port_name for pid in cfg.port_id])
 
 
 # This is the main function to use should probably not be here!.

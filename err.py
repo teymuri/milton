@@ -1,3 +1,3 @@
-class ComputilZeroHertzError(Exception):
+class CUZeroHzErr(Exception):
     pass
     

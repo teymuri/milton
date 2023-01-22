@@ -1,8 +1,8 @@
 import time
 import rtmidi
 import asyncio
-from .err import *
-from .cfg import *
+import cu.cfg
+import cu.err
 from math import (modf, log2)
 from rtmidi.midiconstants import (
     NOTE_OFF, NOTE_ON, PITCH_BEND,
@@ -27,11 +27,11 @@ def knum_to_hz(knum):
 
 def hz_to_knum(hz):
     if hz == 0:
-        raise ComputilZeroHertzError()
+        raise CUZeroHzErr()
     return 12 * (log2(hz) - log2(440)) + 69
 
 def _get_bend_msgs(knum, knum_ipart, ch):
-    bend_val = NO_BEND_VAL + NO_BEND_VAL * (12 / bend_range) * log2(knum_to_hz(knum) / knum_to_hz(knum_ipart))
+    bend_val = NO_BEND_VAL + NO_BEND_VAL * (12 / cu.cfg.bend_range) * log2(knum_to_hz(knum) / knum_to_hz(knum_ipart))
     # note that crazy fractional parts could result in loss of information(because of rounding)
     bend_val = round(bend_val)
     bend_msg = (PITCH_BEND + ch, bend_val & 0x7f, (bend_val >> 7) & 0x7f)
@@ -154,7 +154,7 @@ def piccolo():
 
 def _is_wanted_port(port_name):    
     port_name = port_name.lower()
-    return all([pid.lower() in port_name for pid in port_id])
+    return all([pid.lower() in port_name for pid in cu.cfg.port_id])
 
 
 # This is the main function to use should probably not be here!.
@@ -185,10 +185,10 @@ def proc(func, *args):
                 MOUT.send_message([CONTROL_CHANGE | ch, ALL_SOUND_OFF, 0])
                 MOUT.send_message([CONTROL_CHANGE | ch, RESET_ALL_CONTROLLERS, 0])
                 time.sleep(0.05)
-        except (ComputilZeroHertzError):
+        except (CUZeroHzErr):
             print("can't convert 0 hz to midi knum")
         finally:
-            if as_script: # don't if in the python shell, as the midiout might still be needed
+            if cu.cfg.as_script: # don't if in the python shell, as the midiout might still be needed
                 print("finished processing")
                 # de-allocating pointer to c++ instance
                 # MOUT.delete()
@@ -256,7 +256,7 @@ if __name__ == "__main__":
         #     play_note(70, vel=110)
 
     def f():
-        # port_id=("fluid",)
+        # cu.cfg.port_id=("fluid",)
         play_note(60)
         play_note(60.25,ch=2)
         play_note(60.5, ch=3)

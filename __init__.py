@@ -1,2 +1,2 @@
-from .cfg import *
-from .midi import *
+# from .cfg import (bend_range)
+# from .midi import *

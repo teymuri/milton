@@ -12,8 +12,7 @@ from rtmidi.midiconstants import (
 
 
 
-
-MOUT = rtmidi.MidiOut(name="Computil Client", rtapi=rtmidi.API_LINUX_ALSA)
+MOUT = rtmidi.MidiOut(name="CU", rtapi=rtmidi.API_LINUX_ALSA)
 NO_BEND_VAL = 2 ** 13
 NO_BEND_RESET_LSB = NO_BEND_VAL & 0x7f # isthis msb or lsb for send_message?!??
 NO_BEND_RESET_MSB = (NO_BEND_VAL >> 7) & 0x7f
@@ -27,7 +26,7 @@ def knum_to_hz(knum):
 
 def hz_to_knum(hz):
     if hz == 0:
-        raise CUZeroHzErr()
+        raise cu.err.CUZeroHzErr()
     return 12 * (log2(hz) - log2(440)) + 69
 
 def _get_bend_msgs(knum, knum_ipart, ch):
@@ -154,6 +153,7 @@ def piccolo():
 
 def _is_wanted_port(port_name):    
     port_name = port_name.lower()
+    # pid = port identifier: part of port's name
     return all([pid.lower() in port_name for pid in cu.cfg.port_id])
 
 
@@ -164,7 +164,6 @@ def proc(func, *args):
     proc should be given one single
     func which is your whole composition, don't call it multiple times
     via iteration etc."""
-    global MOUT
     ports = MOUT.get_ports()
     # connect to the desired port
     if ports:
@@ -172,9 +171,10 @@ def proc(func, *args):
         for i, p in enumerate(ports):
             if _is_wanted_port(p): 
                 port_idx = i
+                break
         port = MOUT.open_port(port_idx, name=MOUT.get_port_name(port_idx))
     else:
-        port = MOUT.open_virtual_port("Computil Virtual Output")
+        port = MOUT.open_virtual_port("CU Virtual Output Port")
     with port:
         try:
             func(*args)
@@ -185,13 +185,13 @@ def proc(func, *args):
                 MOUT.send_message([CONTROL_CHANGE | ch, ALL_SOUND_OFF, 0])
                 MOUT.send_message([CONTROL_CHANGE | ch, RESET_ALL_CONTROLLERS, 0])
                 time.sleep(0.05)
-        except (CUZeroHzErr):
+        except (cu.err.CUZeroHzErr):
             print("can't convert 0 hz to midi knum")
-        finally:
-            if cu.cfg.as_script: # don't if in the python shell, as the midiout might still be needed
-                print("finished processing")
-                # de-allocating pointer to c++ instance
-                # MOUT.delete()
+        # finally:
+        #     if cu.cfg.as_script: # don't if in the python shell, as the midiout might still be needed
+        #         print("finished processing")
+        #         # de-allocating pointer to c++ instance
+        #         # MOUT.delete()
 
 
 # Note names
@@ -255,12 +255,12 @@ if __name__ == "__main__":
         # for _ in range(1600):
         #     play_note(70, vel=110)
 
-    def f():
-        # cu.cfg.port_id=("fluid",)
-        play_note(60)
-        play_note(60.25,ch=2)
-        play_note(60.5, ch=3)
-        play_note(60.75, ch=4)
-        play_note(61, ch=5)
+    # def f():
+    #     # cu.cfg.port_id=("fluid",)
+    #     play_note(60.5)
+    #     play_note(60.25,ch=2)
+    #     play_note(60.5, ch=3)
+    #     play_note(60.75, ch=4)
+    #     play_note(61, ch=5)
 
     proc(f)

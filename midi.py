@@ -11,7 +11,6 @@ from rtmidi.midiconstants import (
 )
 
 
-cfg.port_ids=("fluid")
 
 
 MOUT = rtmidi.MidiOut(name="Computil Client", rtapi=rtmidi.API_LINUX_ALSA)

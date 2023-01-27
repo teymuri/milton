@@ -1,4 +1,3 @@
 bend_range = 2 # semitones
-# Midi Port Identifier
-port_id = ("yoshimi", "input")
-as_script = True
+# Midi input Port Identifier
+in_port_id = ("yoshimi",)

@@ -1,5 +1,6 @@
 import time
 import rtmidi
+import rtmidi.midiutil
 import asyncio
 import cu.cfg
 import cu.err
@@ -12,7 +13,7 @@ from rtmidi.midiconstants import (
 
 
 
-MOUT = rtmidi.MidiOut(name="CU", rtapi=rtmidi.API_LINUX_ALSA)
+MIDI_OUT = rtmidi.MidiOut(name="CU", rtapi=rtmidi.API_LINUX_ALSA)
 NO_BEND_VAL = 2 ** 13
 NO_BEND_RESET_LSB = NO_BEND_VAL & 0x7f # isthis msb or lsb for send_message?!??
 NO_BEND_RESET_MSB = (NO_BEND_VAL >> 7) & 0x7f
@@ -56,6 +57,7 @@ def _is_chnl_in_use(ch):
     else:
         return False
 
+
 def play_note(knum=60, dur=1, ch=1, vel=127):
     global _chnls_pool
     fpart, ipart = modf(knum)
@@ -70,15 +72,16 @@ def play_note(knum=60, dur=1, ch=1, vel=127):
     non_msg, nof_msg = _get_non_nof_msgs(ipart, ch, vel)
     try:
         if fpart: # needs microtonal channel adjustment
-            MOUT.send_message(bend_msg)
-        MOUT.send_message(non_msg)
+            MIDI_OUT.send_message(bend_msg)
+        MIDI_OUT.send_message(non_msg)
         time.sleep(dur)
     finally:
-        MOUT.send_message(nof_msg)
+        MIDI_OUT.send_message(nof_msg)
         if fpart: # reset channel microtuning
-            MOUT.send_message(bend_reset_msg)
+            MIDI_OUT.send_message(bend_reset_msg)
         # put the ch back in the pool
         _chnls_pool.add(ch)
+
 
 def play_chord(knums=[60], dur=1, ch=1, vel=127):
     count = len(knums)
@@ -86,11 +89,11 @@ def play_chord(knums=[60], dur=1, ch=1, vel=127):
     off_msgs = [[NOTE_OFF + ch - 1, n, vel] for n in knums]
     try:
         for i in range(count):
-            MOUT.send_message(on_msgs[i])
+            MIDI_OUT.send_message(on_msgs[i])
         time.sleep(dur)
     finally:
         for i in range(count):
-            MOUT.send_message(off_msgs[i])
+            MIDI_OUT.send_message(off_msgs[i])
 
 
 async def _play_voice(pitches, durs, ch, vels, out, show):
@@ -110,7 +113,7 @@ async def _play_voice(pitches, durs, ch, vels, out, show):
             out.send_message(nof)
 
 # TODO: packing chords in voices should become possible.
-async def play_poly(voice_pitches, voice_durs, chs, voice_vels, show=False, out=MOUT):
+async def play_poly(voice_pitches, voice_durs, chs, voice_vels, show=False, out=MIDI_OUT):
     play_voices = [] # playable voices
     for i in range(len(voice_pitches)):
         play_voices.append(
@@ -151,39 +154,46 @@ def piccolo():
         print(p)
         play_note(p, d, vel=50)
 
-def _is_wanted_port(port_name):    
+def _is_the_port(port_name):    
     port_name = port_name.lower()
     # pid = port identifier: part of port's name
-    return all([pid.lower() in port_name for pid in cu.cfg.port_id])
+    return all([pid.lower() in port_name for pid in cu.cfg.in_port_id])
 
 
 # This is the main function to use should probably not be here!.
-def proc(func, *args):
+def proc(func, args=None):
     """Run the func, processing the rtmidi calls and cleanup if called from within a script.
-    If running from inside a script also dealloc the MOUT object.
+    If running from inside a script also dealloc the MIDI_OUT object.
     proc should be given one single
     func which is your whole composition, don't call it multiple times
     via iteration etc."""
-    ports = MOUT.get_ports()
+    port_idx = None
+    ports = MIDI_OUT.get_ports()
     # connect to the desired port
     if ports:
-        port_idx = 0
         for i, p in enumerate(ports):
-            if _is_wanted_port(p): 
+            if _is_the_port(p): 
                 port_idx = i
                 break
-        port = MOUT.open_port(port_idx, name=MOUT.get_port_name(port_idx))
-    else:
-        port = MOUT.open_virtual_port("CU Virtual Output Port")
-    with port:
+    # breakpoint()
+    with (MIDI_OUT.open_port(port_idx, f"CU Output Port {port_idx}") if port_idx != None else 
+          MIDI_OUT.open_virtual_port("CU Virtual Output Port")):
         try:
-            func(*args)
+            if args:
+                if isinstance(args, dict):
+                    func(**args)
+                elif isinstance(args, (list, tuple)):
+                    func(*args)
+                else:
+                    raise TypeError(f"args to proc's func should be an iterable, got {args}")
+            else:
+                func()
         except (EOFError, KeyboardInterrupt):
             # if interrupted while running function, panic!
             print("\npanic!")
             for ch in range(16):
-                MOUT.send_message([CONTROL_CHANGE | ch, ALL_SOUND_OFF, 0])
-                MOUT.send_message([CONTROL_CHANGE | ch, RESET_ALL_CONTROLLERS, 0])
+                MIDI_OUT.send_message([CONTROL_CHANGE | ch, ALL_SOUND_OFF, 0])
+                MIDI_OUT.send_message([CONTROL_CHANGE | ch, RESET_ALL_CONTROLLERS, 0])
                 time.sleep(0.05)
         except (cu.err.CUZeroHzErr):
             print("can't convert 0 hz to midi knum")
@@ -191,7 +201,7 @@ def proc(func, *args):
         #     if cu.cfg.as_script: # don't if in the python shell, as the midiout might still be needed
         #         print("finished processing")
         #         # de-allocating pointer to c++ instance
-        #         # MOUT.delete()
+        #         # MIDI_OUT.delete()
 
 
 # Note names
@@ -226,11 +236,11 @@ if __name__ == "__main__":
             print(kn, d)
             play_note(kn, dur=d)
 
-    def f():
-        for _ in range(10):
-            for i in range(20):
-                play_note(50 + i /5, dur=.01)
-            time.sleep(1)
+    # def f():
+    #     for _ in range(10):
+    #         for i in range(20):
+    #             play_note(50 + i /5, dur=.001)
+    #         time.sleep(1)
 
     # def f():
     #     for i in range(1000):
@@ -244,16 +254,16 @@ if __name__ == "__main__":
     #             print(k, m)
     #             play_note(k+m)
     #
-    def f():
-        for i in range(10000):
-            i /= 100
-            fr = 30
-            print(fr+i)
-            # play_note(hz_to_knum(fr * i), dur=0.01)
-            play_note(fr+i,dur=0.01)
-        # play_note(69.5, dur=2000, vel=120)
-        # for _ in range(1600):
-        #     play_note(70, vel=110)
+    # def f():
+    #     for i in range(127000):
+    #         i /= 100
+    #         fr = 60
+    #         print(fr+i)
+    #         # play_note(hz_to_knum(fr * i), dur=0.01)
+    #         play_note(fr+i,dur=0.001)
+    #     # play_note(69.5, dur=2000, vel=120)
+    #     # for _ in range(1600):
+    #     #     play_note(70, vel=110)
 
     # def f():
     #     # cu.cfg.port_id=("fluid",)
@@ -262,5 +272,11 @@ if __name__ == "__main__":
     #     play_note(60.5, ch=3)
     #     play_note(60.75, ch=4)
     #     play_note(61, ch=5)
+
+    # def f(kn, dur):
+    #     print(cu.cfg.in_port_id)
+    #     # cu.cfg.in_port_id = ("through", )
+    #     print(cu.cfg.in_port_id)
+    #     play_note(kn, dur=dur)
 
     proc(f)

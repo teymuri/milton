@@ -51,25 +51,25 @@ def _get_non_nof_msgs(knum_ipart, ch, vel):
     return non_msg, nof_msg
     
 
-def _is_chnl_in_use(ch):
-    if ch not in _chnls_pool:
+def _is_chnl_in_use(chnl):
+    if chnl not in _chnls_pool:
         return True
     else:
         return False
 
 
-def play_note(knum=60, dur=1, ch=1, vel=127):
+def play_note(knum=60, dur=1, chnl=1, vel=127):
     global _chnls_pool
     fpart, ipart = modf(knum)
     ipart = int(ipart)
-    ch -= 1 # convert from user-perspective to midi-perspective
-    if fpart: # do not just fuck with the ch!
-        if _is_chnl_in_use(ch): # then pick up another ch
-            ch = _chnls_pool.pop()
-        bend_msg, bend_reset_msg = _get_bend_msgs(knum, ipart, ch)
-    else: # mark ch as in use
-        _chnls_pool.remove(ch)
-    non_msg, nof_msg = _get_non_nof_msgs(ipart, ch, vel)
+    chnl -= 1 # convert from user-perspective to midi-perspective
+    if fpart: # do not just fuck with the chnl!
+        if _is_chnl_in_use(chnl): # then pick up another chnl
+            chnl = _chnls_pool.pop()
+        bend_msg, bend_reset_msg = _get_bend_msgs(knum, ipart, chnl)
+    else: # mark chnl as in use
+        _chnls_pool.remove(chnl)
+    non_msg, nof_msg = _get_non_nof_msgs(ipart, chnl, vel)
     try:
         if fpart: # needs microtonal channel adjustment
             MIDI_OUT.send_message(bend_msg)
@@ -79,8 +79,8 @@ def play_note(knum=60, dur=1, ch=1, vel=127):
         MIDI_OUT.send_message(nof_msg)
         if fpart: # reset channel microtuning
             MIDI_OUT.send_message(bend_reset_msg)
-        # put the ch back in the pool
-        _chnls_pool.add(ch)
+        # put the chnl back in the pool
+        _chnls_pool.add(chnl)
 
 
 def play_chord(knums=[60], dur=1, ch=1, vel=127):
@@ -265,13 +265,13 @@ if __name__ == "__main__":
     #     # for _ in range(1600):
     #     #     play_note(70, vel=110)
 
-    # def f():
-    #     # cu.cfg.port_id=("fluid",)
-    #     play_note(60.5)
-    #     play_note(60.25,ch=2)
-    #     play_note(60.5, ch=3)
-    #     play_note(60.75, ch=4)
-    #     play_note(61, ch=5)
+    def f():
+        # cu.cfg.port_id=("fluid",)
+        play_note(60.5)
+        play_note(60.25,chnl=2)
+        play_note(60.5, chnl=3)
+        play_note(60.75, chnl=4)
+        play_note(61, chnl=5)
 
     # def f(kn, dur):
     #     print(cu.cfg.in_port_id)

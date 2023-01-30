@@ -23,12 +23,16 @@ def init_client(client_id=0):
     # register the created output client
     _client_registry[client_id] = client
 
-def kill_client(client_id=0):
-    _client_port_registry[client_id].close_port()
-    del _client_port_registry[client_id]
-    time.sleep(0.1)
-    _client_registry[client_id].delete()
-    del _client_registry[client_id]
+def get_client_ids():
+    return _client_registry.keys()
+
+def kill_client(cid): # cid = client id
+    if cid in _client_port_registry:
+        _client_port_registry[cid].close_port()
+        del _client_port_registry[cid]
+        time.sleep(0.1)
+    _client_registry[cid].delete()
+    del _client_registry[cid]
 
 _CLIENT = None
 NO_BEND_VAL = 2 ** 13

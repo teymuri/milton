@@ -11,9 +11,15 @@ from rtmidi.midiconstants import (
     RESET_ALL_CONTROLLERS
 )
 
+_midi_out_clients_registry = dict()
 
+def init_client(n):
+    client = rtmidi.MidiOut(name=f"CU{n}", rtapi=rtmidi.API_LINUX_ALSA)
+    # register the created output client
+    _midi_out_clients_registry[n] = client
+    return client
 
-MIDI_OUT = rtmidi.MidiOut(name="CU", rtapi=rtmidi.API_LINUX_ALSA)
+MIDI_OUT_CLIENT = init_client(0) 
 NO_BEND_VAL = 2 ** 13
 NO_BEND_RESET_LSB = NO_BEND_VAL & 0x7f # isthis msb or lsb for send_message?!??
 NO_BEND_RESET_MSB = (NO_BEND_VAL >> 7) & 0x7f
@@ -72,13 +78,13 @@ def play_note(knum=60, dur=1, chnl=1, vel=127):
     non_msg, nof_msg = _get_non_nof_msgs(ipart, chnl, vel)
     try:
         if fpart: # needs microtonal channel adjustment
-            MIDI_OUT.send_message(bend_msg)
-        MIDI_OUT.send_message(non_msg)
+            MIDI_OUT_CLIENT.send_message(bend_msg)
+        MIDI_OUT_CLIENT.send_message(non_msg)
         time.sleep(dur)
     finally:
-        MIDI_OUT.send_message(nof_msg)
+        MIDI_OUT_CLIENT.send_message(nof_msg)
         if fpart: # reset channel microtuning
-            MIDI_OUT.send_message(bend_reset_msg)
+            MIDI_OUT_CLIENT.send_message(bend_reset_msg)
         # put the chnl back in the pool
         _chnls_pool.add(chnl)
 
@@ -89,11 +95,11 @@ def play_chord(knums=[60], dur=1, ch=1, vel=127):
     off_msgs = [[NOTE_OFF + ch - 1, n, vel] for n in knums]
     try:
         for i in range(count):
-            MIDI_OUT.send_message(on_msgs[i])
+            MIDI_OUT_CLIENT.send_message(on_msgs[i])
         time.sleep(dur)
     finally:
         for i in range(count):
-            MIDI_OUT.send_message(off_msgs[i])
+            MIDI_OUT_CLIENT.send_message(off_msgs[i])
 
 
 async def _play_voice(pitches, durs, ch, vels, out, show):
@@ -113,7 +119,7 @@ async def _play_voice(pitches, durs, ch, vels, out, show):
             out.send_message(nof)
 
 # TODO: packing chords in voices should become possible.
-async def play_poly(voice_pitches, voice_durs, chs, voice_vels, show=False, out=MIDI_OUT):
+async def play_poly(voice_pitches, voice_durs, chs, voice_vels, show=False, out=MIDI_OUT_CLIENT):
     play_voices = [] # playable voices
     for i in range(len(voice_pitches)):
         play_voices.append(
@@ -160,24 +166,39 @@ def _is_the_port(port_name):
     return all([pid.lower() in port_name for pid in cu.cfg.in_port_id])
 
 
+_client_ports_registry = dict()
+
+def _open_client_port(n):
+    client = _midi_out_clients_registry[n]
+    if client.is_port_open():
+        return _client_ports_registry[n]
+    else: # no ports opened yet
+        port_idx = None
+        ports = client.get_ports()
+        # connect to the desired port
+        if ports:
+            for i, p in enumerate(ports):
+                if _is_the_port(p): 
+                    port_idx = i
+                    break
+        if port_idx is None:
+            port = client.open_virtual_port(f"cu vport for client {n}")
+        else:
+            port = client.open_port(port_idx, f"cu port for client {n}")
+        _client_ports_registry[n] = port
+        return port
+        
+
+
 # This is the main function to use should probably not be here!.
-def proc(func, args=None):
+def proc(func, args=None, cl_num=0):
     """Run the func, processing the rtmidi calls and cleanup if called from within a script.
-    If running from inside a script also dealloc the MIDI_OUT object.
+    If running from inside a script also dealloc the MIDI_OUT_CLIENT object.
     proc should be given one single
     func which is your whole composition, don't call it multiple times
     via iteration etc."""
-    port_idx = None
-    ports = MIDI_OUT.get_ports()
-    # connect to the desired port
-    if ports:
-        for i, p in enumerate(ports):
-            if _is_the_port(p): 
-                port_idx = i
-                break
-    # breakpoint()
-    with (MIDI_OUT.open_port(port_idx, f"CU Output Port {port_idx}") if port_idx != None else 
-          MIDI_OUT.open_virtual_port("CU Virtual Output Port")):
+    client = _midi_out_clients_registry[cl_num]
+    with _open_client_port(cl_num):
         try:
             if args:
                 if isinstance(args, dict):
@@ -192,8 +213,8 @@ def proc(func, args=None):
             # if interrupted while running function, panic!
             print("\npanic!")
             for ch in range(16):
-                MIDI_OUT.send_message([CONTROL_CHANGE | ch, ALL_SOUND_OFF, 0])
-                MIDI_OUT.send_message([CONTROL_CHANGE | ch, RESET_ALL_CONTROLLERS, 0])
+                client.send_message([CONTROL_CHANGE | ch, ALL_SOUND_OFF, 0])
+                client.send_message([CONTROL_CHANGE | ch, RESET_ALL_CONTROLLERS, 0])
                 time.sleep(0.05)
         except (cu.err.CUZeroHzErr):
             print("can't convert 0 hz to midi knum")
@@ -201,7 +222,7 @@ def proc(func, args=None):
         #     if cu.cfg.as_script: # don't if in the python shell, as the midiout might still be needed
         #         print("finished processing")
         #         # de-allocating pointer to c++ instance
-        #         # MIDI_OUT.delete()
+        #         # MIDI_OUT_CLIENT.delete()
 
 
 # Note names

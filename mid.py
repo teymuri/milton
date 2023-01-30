@@ -27,13 +27,15 @@ def get_client_ids():
     return _client_registry.keys()
 
 def kill_client(cid): # cid = client id
-    if cid in _client_port_registry:
+    if cid in _client_port_registry: # perhaps no ports ever opened!
         _client_port_registry[cid].close_port()
         del _client_port_registry[cid]
         time.sleep(0.1)
     _client_registry[cid].delete()
     del _client_registry[cid]
 
+# This is the client used on each processing, and
+# is set one per each proc call.
 _CLIENT = None
 NO_BEND_VAL = 2 ** 13
 NO_BEND_RESET_LSB = NO_BEND_VAL & 0x7f # isthis msb or lsb for send_message?!??

@@ -14,7 +14,7 @@ from rtmidi.midiconstants import (
 _midi_out_clients_registry = dict()
 
 def init_client(n):
-    client = rtmidi.MidiOut(name=f"CU{n}", rtapi=rtmidi.API_LINUX_ALSA)
+    client = rtmidi.MidiOut(name=f"cu client {n}", rtapi=rtmidi.API_LINUX_ALSA)
     # register the created output client
     _midi_out_clients_registry[n] = client
     return client
@@ -191,26 +191,26 @@ def _open_client_port(n):
 
 
 # This is the main function to use should probably not be here!.
-def proc(func, args=None, cl_num=0):
-    """Run the func, processing the rtmidi calls and cleanup if called from within a script.
+def proc(fun, args=None, clnum=0):
+    """Run the fun, processing the rtmidi calls and cleanup if called from within a script.
     If running from inside a script also dealloc the MIDI_OUT_CLIENT object.
     proc should be given one single
-    func which is your whole composition, don't call it multiple times
+    fun which is your whole composition, don't call it multiple times
     via iteration etc."""
-    client = _midi_out_clients_registry[cl_num]
-    with _open_client_port(cl_num):
+    client = _midi_out_clients_registry[clnum]
+    with _open_client_port(clnum):
         try:
             if args:
                 if isinstance(args, dict):
-                    func(**args)
+                    fun(**args)
                 elif isinstance(args, (list, tuple)):
-                    func(*args)
+                    fun(*args)
                 else:
-                    raise TypeError(f"args to proc's func should be an iterable, got {args}")
+                    raise TypeError(f"args to proc's fun should be an iterable, got {args}")
             else:
-                func()
+                fun()
         except (EOFError, KeyboardInterrupt):
-            # if interrupted while running function, panic!
+            # if interrupted while running funtion, panic!
             print("\npanic!")
             for ch in range(16):
                 client.send_message([CONTROL_CHANGE | ch, ALL_SOUND_OFF, 0])

@@ -1,7 +1,7 @@
 import time
+import asyncio
 import rtmidi
 import rtmidi.midiutil
-import asyncio
 import cu.cfg
 import cu.err
 from math import (modf, log2)
@@ -102,7 +102,7 @@ def _get_non_nof_msgs(knum_ipart, ch, vel):
     return non_msg, nof_msg
     
 
-def _is_chnl_in_use(chnl):
+def _is_chnl_in_use(chnl): # chnl is midi-perspective
     if chnl not in _chnls_pool:
         return True
     else:
@@ -133,76 +133,174 @@ def play_note(knum=60, dur=1, chnl=1, vel=127):
         # put the chnl back in the pool
         _chnls_pool.add(chnl)
 
-# def play_note(knum=60, dur=1, chnl=1, vel=127):
-#     global _chnls_pool
-#     fpart, ipart = modf(knum)
-#     ipart = int(ipart)
-#     chnl -= 1 # convert from user-perspective to midi-perspective
-#     if fpart: # do not just fuck with the chnl!
-#         if _is_chnl_in_use(chnl): # then pick up another chnl
-#             chnl = _chnls_pool.pop()
-#         bend_msg, bend_reset_msg = _get_bend_msgs(knum, ipart, chnl)
-#     else: # mark chnl as in use
-#         _chnls_pool.remove(chnl)
-#     non_msg, nof_msg = _get_non_nof_msgs(ipart, chnl, vel)
-#     try:
-#         if fpart: # needs microtonal channel adjustment
-#             MIDI_OUT_CLIENT.send_message(bend_msg)
-#         MIDI_OUT_CLIENT.send_message(non_msg)
-#         time.sleep(dur)
-#     finally:
-#         MIDI_OUT_CLIENT.send_message(nof_msg)
-#         if fpart: # reset channel microtuning
-#             MIDI_OUT_CLIENT.send_message(bend_reset_msg)
-#         # put the chnl back in the pool
-#         _chnls_pool.add(chnl)
-#
 
-# def play_chord(knums=[60], dur=1, ch=1, vel=127):
-#     count = len(knums)
-#     on_msgs = [[NOTE_ON + ch - 1, n, vel] for n in knums]
-#     off_msgs = [[NOTE_OFF + ch - 1, n, vel] for n in knums]
-#     try:
-#         for i in range(count):
-#             MIDI_OUT_CLIENT.send_message(on_msgs[i])
-#         time.sleep(dur)
-#     finally:
-#         for i in range(count):
-#             MIDI_OUT_CLIENT.send_message(off_msgs[i])
-#
-#
-# async def _play_voice(pitches, durs, ch, vels, out, show):
-#     for i, p in enumerate(pitches):
-#         if show:
-#             print(f"Ch {ch} Pitch {p} Dur {durs[i]} Vel {vels[i]}")
-#         if p < 0: # rest
-#             non = [NOTE_ON + ch -1, 0, 0]
-#             nof = [NOTE_OFF + ch - 1, 0, 0]
-#         else:
-#             non = [NOTE_ON + ch - 1, p, vels[i]]
-#             nof = [NOTE_OFF + ch - 1, p, vels[i]]
-#         try:
-#             out.send_message(non)
-#             await asyncio.sleep(durs[i])
-#         finally:
-#             out.send_message(nof)
-#
-# # TODO: packing chords in voices should become possible.
-# async def play_poly(voice_pitches, voice_durs, chs, voice_vels, show=False, out=MIDI_OUT_CLIENT):
-#     play_voices = [] # playable voices
-#     for i in range(len(voice_pitches)):
-#         play_voices.append(
-#             asyncio.create_task(_play_voice(
-#                 voice_pitches[i],
-#                 voice_durs[i],
-#                 chs[i],
-#                 voice_vels[i],
-#                 out,
-#                 show)
-#             )
-#         )
-#     await asyncio.wait(play_voices)
-#
+
+_chnl_usage_trace = {
+    # channel: [reference/usage, status]
+    # status = is in use by a microtone (if usage > 0)
+    # status False and reference>0 means in-use by equal tempered notes
+    chnl: [0, None] for chnl in range(16)
+}
+def _is_chnl_free_for_micton(chnl):
+    """Returns true if chnl is accessible for a microtone, ie
+    no other references to this channel exist."""
+    return _chnl_usage_trace[chnl][0] == 0 
+
+def _is_chnl_free_for_eqtemp(chnl):
+    """Returns true if channel is accessible for an equal-tempered note,
+    ie either no references to the channel exist, or those references
+    are all to eqaul-tempered notes too."""
+    return _chnl_usage_trace[chnl][0] == 0 or\
+           _chnl_usage_trace[chnl][1] is False
+
+def _get_next_free_chnl_for_micton():
+    """Returns the next for microtones accessible channel, ie
+    a channel with 0 references."""
+    for chnl, stat in _chnl_usage_trace.items():
+        if stat[0] == 0: # 0 references
+            return chnl
+
+def _get_next_free_chnl_for_eqtemp():
+    """Returns the next for equal-tempered notes free channel, ie
+    a channel with zero references or with references to other
+    equal-tempered notes."""
+    for chnl, stat in _chnl_usage_trace.items():
+        if stat[0] == 0 or stat[1] is False:
+            return chnl
+
+def _verify_setup_chnl_for_micton_ip(midi_chnl):
+    global _chnl_usage_trace
+    if not _is_chnl_free_for_micton(midi_chnl):
+        midi_chnl = _get_next_free_chnl_for_micton()
+    # increment channel's usage
+    _chnl_usage_trace[midi_chnl][0] = 1
+    # set status to in-use by a microtone
+    _chnl_usage_trace[midi_chnl][1] = True
+    return midi_chnl
+
+def _verify_setup_chnl_for_eqtemp_ip(midi_chnl):
+    global _chnl_usage_trace
+    if not _is_chnl_free_for_eqtemp(midi_chnl):
+        midi_chnl = _get_next_free_chnl_for_eqtemp()
+    # increment channel's references
+    _chnl_usage_trace[midi_chnl][0] += 1
+    # set status to in-use by non-microtones if not happened yet
+    if _chnl_usage_trace[midi_chnl][1] is not False:
+        _chnl_usage_trace[midi_chnl][1] = False
+    return midi_chnl
+
+def _get_msgs(knum, midi_chnl, vel) -> tuple:
+    non_msg = nof_msg = bend_msg = bend_reset_msg = None
+    fpart, ipart = modf(knum)
+    ipart = int(ipart)
+    if fpart: # is microtonal
+        midi_chnl = _verify_setup_chnl_for_micton_ip(midi_chnl)
+        bend_msg, bend_reset_msg = _get_bend_msgs(knum, ipart, midi_chnl)
+    else:
+        midi_chnl = _verify_setup_chnl_for_eqtemp_ip(midi_chnl)
+    non_msg, nof_msg = _get_non_nof_msgs(ipart, midi_chnl, vel)
+    return non_msg, nof_msg, bend_msg, bend_reset_msg, midi_chnl
+
+
+def play_note(knum, dur=1, chnl=1, vel=127):
+    global _chnl_usage_trace
+    non, nof, bend, bend_reset, chnl_ = _get_msgs(knum, chnl-1, vel)
+    try:
+        if bend:
+            _CLIENT.send_message(bend)
+        _CLIENT.send_message(non)
+        time.sleep(dur)
+    finally:
+        _CLIENT.send_message(nof)
+        if bend_reset:
+            _chnl_usage_trace[chnl_][0] -= 1
+            assert _chnl_usage_trace[chnl_][0] == 0
+            _chnl_usage_trace[chnl_][1] = None
+            _CLIENT.send_message(bend_reset)
+        else:
+            _chnl_usage_trace[chnl_][0] -= 1
+            if _chnl_usage_trace[chnl_][0] == 0:
+                _chnl_usage_trace[chnl_][1] = None
+
+async def _async_play_note(knum, dur, chnl, vel):
+    global _chnl_usage_trace
+    non, nof, bend, bend_reset, chnl_ = _get_msgs(knum, chnl-1, vel)
+    try:
+        if bend:
+            _CLIENT.send_message(bend)
+        _CLIENT.send_message(non)
+        await asyncio.sleep(dur)
+    finally:
+        _CLIENT.send_message(nof)
+        if bend_reset:
+            _chnl_usage_trace[chnl_][0] -= 1
+            assert _chnl_usage_trace[chnl_][0] == 0
+            _chnl_usage_trace[chnl_][1] = None
+            _CLIENT.send_message(bend_reset)
+        else:
+            _chnl_usage_trace[chnl_][0] -= 1
+            if _chnl_usage_trace[chnl_][0] == 0:
+                _chnl_usage_trace[chnl_][1] = None
+
+
+async def _async_play_chord(knums, dur, chnl, vel):
+    global _chnl_usage_trace
+    msgs = [_get_msgs(knum, chnl-1, vel) for knum in knums]
+    try:
+        for non, _, bend, _, _ in msgs:
+            if bend: # either bend message or None
+                _CLIENT.send_message(bend)
+            _CLIENT.send_message(non)
+        await asyncio.sleep(dur)
+    finally:
+        for _, nof, _, bend_reset, chnl_ in msgs:
+            _CLIENT.send_message(nof)
+            if bend_reset:
+                _chnl_usage_trace[chnl_][0] -= 1
+                assert _chnl_usage_trace[chnl_][0] == 0
+                _chnl_usage_trace[chnl_][1] = None
+                _CLIENT.send_message(bend_reset)
+            else:
+                _chnl_usage_trace[chnl_][0] -= 1
+                if _chnl_usage_trace[chnl_][0] == 0:
+                    _chnl_usage_trace[chnl_][1] = None
+
+def play_chord(knums, dur=1, chnl=1, vel=127):
+    global _chnl_usage_trace
+    msgs = [_get_msgs(knum, chnl-1, vel) for knum in knums]
+    try:
+        for non, _, bend, _, _ in msgs:
+            if bend: # either bend message or None
+                _CLIENT.send_message(bend)
+            _CLIENT.send_message(non)
+        time.sleep(dur)
+    finally:
+        for _, nof, _, bend_reset, chnl_ in msgs:
+            _CLIENT.send_message(nof)
+            if bend_reset:
+                _chnl_usage_trace[chnl_][0] -= 1
+                assert _chnl_usage_trace[chnl_][0] == 0
+                _chnl_usage_trace[chnl_][1] = None
+                _CLIENT.send_message(bend_reset)
+            else:
+                _chnl_usage_trace[chnl_][0] -= 1
+                if _chnl_usage_trace[chnl_][0] == 0:
+                    _chnl_usage_trace[chnl_][1] = None
+
+
+async def _play_voice(knums, durs, chnl, vels):
+    for i, knum in enumerate(knums):
+        if isinstance(knum, (list, tuple)): # a chord
+            await _async_play_chord(knum, durs[i], chnl, vels[i])
+        else: # a single note
+            await _async_play_note(knum, durs[i], chnl, vels[i])
+
+async def play_poly(voices):
+    await asyncio.gather(
+        *(_play_voice(v[0], v[1], v[2], v[3]) for v in voices)
+    )
+
+
 
 def test():
     import random
@@ -231,9 +329,7 @@ def piccolo():
 
         
 
-
-# This is the main function to use should probably not be here!.
-def proc(fun, args=None, client_id=0):
+def proc(fun, args=None, client_id=0, poly=False):
     """Run the fun, processing the rtmidi calls and cleanup if called from within a script.
     If running from inside a script also dealloc the MIDI_OUT_CLIENT object.
     proc should be given one single
@@ -243,12 +339,24 @@ def proc(fun, args=None, client_id=0):
     _CLIENT = _client_registry[client_id]
     with _get_client_port(client_id): # open the port for the chosen client
         try:
-            if isinstance(args, dict):
-                fun(**args)
-            elif isinstance(args, (list, tuple)):
-                fun(*args)
+            if poly: # run async
+                if isinstance(args, dict): # isinstance(None, dict) => False
+                    asyncio.run(fun(**args))
+                elif isinstance(args, (tuple, list)):
+                    asyncio.run(fun(*args))
+                elif args is not None:
+                    asyncio.run(fun(args))
+                else:
+                    asyncio.run(fun())
             else:
-                fun()
+                if isinstance(args, dict):
+                    fun(**args)
+                elif isinstance(args, (tuple, list)):
+                    fun(*args)
+                elif args is not None:
+                    fun(args)
+                else:
+                    fun()
         except (EOFError, KeyboardInterrupt):
             # if interrupted while running funtion, panic!
             print("\npanic!")

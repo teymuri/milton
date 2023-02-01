@@ -5,6 +5,7 @@ import rtmidi.midiutil
 import cu.cfg
 import cu.err
 from math import (modf, log2)
+from contextlib import ExitStack
 from rtmidi.midiconstants import (
     NOTE_OFF, NOTE_ON, PITCH_BEND,
     ALL_SOUND_OFF, CONTROL_CHANGE,
@@ -13,27 +14,8 @@ from rtmidi.midiconstants import (
 
 
 
-
 _client_registry = dict()
 _client_port_registry = dict()
-
-def init_client(client_id=0):
-    client = rtmidi.MidiOut(name=f"cu output {client_id}",
-                            rtapi=rtmidi.API_LINUX_ALSA)
-    # register the created output client
-    _client_registry[client_id] = client
-
-def get_client_ids():
-    return _client_registry.keys()
-
-def kill_client(cid): # cid = client id
-    if cid in _client_port_registry: # perhaps no ports ever opened!
-        _client_port_registry[cid].close_port()
-        del _client_port_registry[cid]
-        time.sleep(0.1)
-    _client_registry[cid].delete()
-    del _client_registry[cid]
-
 # This is the client used on each processing, and
 # is set one per each proc call.
 _CLIENT = None
@@ -45,33 +27,14 @@ SEMITONE_BEND_RANGE = 4096
 _chnls_pool = set(range(16))
 
 
-def _is_the_port(port_name):    
-    port_name = port_name.lower()
-    # pid = port identifier: part of port's name
-    return all([pid.lower() in port_name for pid in cu.cfg.in_port_id])
+def _get_clientid_and_chnl(chnl):
+    chnl -= 1
+    client_id = chnl // 16
+    client_chnl = chnl % 16
+    return client_id, client_chnl
 
-
-
-def _get_client_port(client_id):
-    """Opens and returns the client with id."""
-    client = _client_registry[client_id]
-    if client.is_port_open():
-        return _client_port_registry[client_id]
-    else: # no ports opened yet
-        port_idx = None
-        ports = client.get_ports()
-        # connect to the desired port
-        if ports:
-            for i, p in enumerate(ports):
-                if _is_the_port(p): 
-                    port_idx = i
-                    break
-        if port_idx is None:
-            port = client.open_virtual_port(f"cu vport for client {client_id}")
-        else:
-            port = client.open_port(port_idx, f"cu port for client {client_id}")
-        _client_port_registry[client_id] = port
-        return port
+def get_client_ids():
+    return _client_registry.keys()
 
 def knum_to_hz(knum):
     return 440 * 2 ** ((knum - 69) / 12.)
@@ -109,29 +72,6 @@ def _is_chnl_in_use(chnl): # chnl is midi-perspective
         return False
 
 
-def play_note(knum=60, dur=1, chnl=1, vel=127):
-    global _chnls_pool
-    fpart, ipart = modf(knum)
-    ipart = int(ipart)
-    chnl -= 1 # convert from user-perspective to midi-perspective
-    if fpart: # do not just fuck with the chnl!
-        if _is_chnl_in_use(chnl): # then pick up another chnl
-            chnl = _chnls_pool.pop()
-        bend_msg, bend_reset_msg = _get_bend_msgs(knum, ipart, chnl)
-    else: # mark chnl as in use
-        _chnls_pool.remove(chnl)
-    non_msg, nof_msg = _get_non_nof_msgs(ipart, chnl, vel)
-    try:
-        if fpart: # needs microtonal channel adjustment
-            _CLIENT.send_message(bend_msg)
-        _CLIENT.send_message(non_msg)
-        time.sleep(dur)
-    finally:
-        _CLIENT.send_message(nof_msg)
-        if fpart: # reset channel microtuning
-            _CLIENT.send_message(bend_reset_msg)
-        # put the chnl back in the pool
-        _chnls_pool.add(chnl)
 
 
 
@@ -139,8 +79,9 @@ _chnl_usage_trace = {
     # channel: [reference/usage, status]
     # status = is in use by a microtone (if usage > 0)
     # status False and reference>0 means in-use by equal tempered notes
-    chnl: [0, None] for chnl in range(16)
+    chnl: [0, None] for chnl in range(160)
 }
+
 def _is_chnl_free_for_micton(chnl):
     """Returns true if chnl is accessible for a microtone, ie
     no other references to this channel exist."""
@@ -202,21 +143,23 @@ def _get_msgs(knum, midi_chnl, vel) -> tuple:
     return non_msg, nof_msg, bend_msg, bend_reset_msg, midi_chnl
 
 
-def play_note(knum, dur=1, chnl=1, vel=127):
+def play_note(knum=60, dur=1, chnl=1, vel=127):
     global _chnl_usage_trace
-    non, nof, bend, bend_reset, chnl_ = _get_msgs(knum, chnl-1, vel)
+    client_id, chnl = _get_clientid_and_chnl(chnl)
+    client = _client_registry[client_id]
+    non, nof, bend, bend_reset, chnl_ = _get_msgs(knum, chnl, vel)
     try:
         if bend:
-            _CLIENT.send_message(bend)
-        _CLIENT.send_message(non)
+            client.send_message(bend)
+        client.send_message(non)
         time.sleep(dur)
     finally:
-        _CLIENT.send_message(nof)
+        client.send_message(nof)
         if bend_reset:
             _chnl_usage_trace[chnl_][0] -= 1
             assert _chnl_usage_trace[chnl_][0] == 0
             _chnl_usage_trace[chnl_][1] = None
-            _CLIENT.send_message(bend_reset)
+            client.send_message(bend_reset)
         else:
             _chnl_usage_trace[chnl_][0] -= 1
             if _chnl_usage_trace[chnl_][0] == 0:
@@ -224,19 +167,21 @@ def play_note(knum, dur=1, chnl=1, vel=127):
 
 async def _async_play_note(knum, dur, chnl, vel):
     global _chnl_usage_trace
-    non, nof, bend, bend_reset, chnl_ = _get_msgs(knum, chnl-1, vel)
+    client_id, chnl = _get_clientid_and_chnl(chnl)
+    client = _client_registry[client_id]
+    non, nof, bend, bend_reset, chnl_ = _get_msgs(knum, chnl, vel)
     try:
         if bend:
-            _CLIENT.send_message(bend)
-        _CLIENT.send_message(non)
+            client.send_message(bend)
+        client.send_message(non)
         await asyncio.sleep(dur)
     finally:
-        _CLIENT.send_message(nof)
+        client.send_message(nof)
         if bend_reset:
             _chnl_usage_trace[chnl_][0] -= 1
             assert _chnl_usage_trace[chnl_][0] == 0
             _chnl_usage_trace[chnl_][1] = None
-            _CLIENT.send_message(bend_reset)
+            client.send_message(bend_reset)
         else:
             _chnl_usage_trace[chnl_][0] -= 1
             if _chnl_usage_trace[chnl_][0] == 0:
@@ -245,43 +190,47 @@ async def _async_play_note(knum, dur, chnl, vel):
 
 async def _async_play_chord(knums, dur, chnl, vel):
     global _chnl_usage_trace
-    msgs = [_get_msgs(knum, chnl-1, vel) for knum in knums]
+    client_id, chnl = _get_clientid_and_chnl(chnl)
+    client = _client_registry[client_id]
+    msgs = [_get_msgs(knum, chnl, vel) for knum in knums]
     try:
         for non, _, bend, _, _ in msgs:
             if bend: # either bend message or None
-                _CLIENT.send_message(bend)
-            _CLIENT.send_message(non)
+                client.send_message(bend)
+            client.send_message(non)
         await asyncio.sleep(dur)
     finally:
         for _, nof, _, bend_reset, chnl_ in msgs:
-            _CLIENT.send_message(nof)
+            client.send_message(nof)
             if bend_reset:
                 _chnl_usage_trace[chnl_][0] -= 1
                 assert _chnl_usage_trace[chnl_][0] == 0
                 _chnl_usage_trace[chnl_][1] = None
-                _CLIENT.send_message(bend_reset)
+                client.send_message(bend_reset)
             else:
                 _chnl_usage_trace[chnl_][0] -= 1
                 if _chnl_usage_trace[chnl_][0] == 0:
                     _chnl_usage_trace[chnl_][1] = None
 
-def play_chord(knums, dur=1, chnl=1, vel=127):
+def play_chord(knums=(60, 64, 67), dur=1, chnl=1, vel=127):
     global _chnl_usage_trace
-    msgs = [_get_msgs(knum, chnl-1, vel) for knum in knums]
+    client_id, chnl = _get_clientid_and_chnl(chnl)
+    client = _client_registry[client_id]
+    msgs = [_get_msgs(knum, chnl, vel) for knum in knums]
     try:
         for non, _, bend, _, _ in msgs:
             if bend: # either bend message or None
-                _CLIENT.send_message(bend)
-            _CLIENT.send_message(non)
+                client.send_message(bend)
+            client.send_message(non)
         time.sleep(dur)
     finally:
         for _, nof, _, bend_reset, chnl_ in msgs:
-            _CLIENT.send_message(nof)
+            client.send_message(nof)
             if bend_reset:
                 _chnl_usage_trace[chnl_][0] -= 1
                 assert _chnl_usage_trace[chnl_][0] == 0
                 _chnl_usage_trace[chnl_][1] = None
-                _CLIENT.send_message(bend_reset)
+                client.send_message(bend_reset)
             else:
                 _chnl_usage_trace[chnl_][0] -= 1
                 if _chnl_usage_trace[chnl_][0] == 0:
@@ -327,7 +276,27 @@ def piccolo():
         print(p)
         play_note(p, d, vel=50)
 
-        
+# save a list of available ports
+_tmp_client = rtmidi.MidiOut(rtapi=rtmidi.API_LINUX_ALSA)
+_AVAILABLE_PORTS = [p.lower() for p in _tmp_client.get_ports()]
+# hopefuly ports are listed in right order by get_ports!!!
+SYNTH_PORT_IDXS = [i for i, p in enumerate(_AVAILABLE_PORTS) if cu.cfg.synth_id.lower() in p]
+_tmp_client.delete()
+
+def open_ports(): 
+    """Opens output ports on each client. This should happen
+    before sending anything to the processor."""
+    for i in range(cu.cfg.port_count):
+        # create a new output client and register it
+        client = rtmidi.MidiOut(name=f"cu output {i}", rtapi=rtmidi.API_LINUX_ALSA)
+        client.open_port(SYNTH_PORT_IDXS[i], f"client {i} port")
+        _client_registry[i] = client
+
+# def close_ports():
+#     for idx, client in _client_registry.items():
+#         client.close_port()
+#         del client
+
 
 def proc(fun, args=None, client_id=0, poly=False):
     """Run the fun, processing the rtmidi calls and cleanup if called from within a script.
@@ -335,9 +304,10 @@ def proc(fun, args=None, client_id=0, poly=False):
     proc should be given one single
     fun which is your whole composition, don't call it multiple times
     via iteration etc."""
-    global _CLIENT
-    _CLIENT = _client_registry[client_id]
-    with _get_client_port(client_id): # open the port for the chosen client
+    clients = _client_registry.values()
+    with ExitStack() as exit_stack:
+        for client_ctx in clients:
+            exit_stack.enter_context(client_ctx)
         try:
             if poly: # run async
                 if isinstance(args, dict): # isinstance(None, dict) => False
@@ -359,18 +329,15 @@ def proc(fun, args=None, client_id=0, poly=False):
                     fun()
         except (EOFError, KeyboardInterrupt):
             # if interrupted while running funtion, panic!
-            print("\npanic!")
-            for ch in range(16):
-                _CLIENT.send_message([CONTROL_CHANGE | ch, ALL_SOUND_OFF, 0])
-                _CLIENT.send_message([CONTROL_CHANGE | ch, RESET_ALL_CONTROLLERS, 0])
+            print("\npanicking...")
+            for client in clients:
+                for chnl in range(16):
+                    client.send_message([CONTROL_CHANGE | chnl, ALL_SOUND_OFF, 0])
+                    client.send_message([CONTROL_CHANGE | chnl, RESET_ALL_CONTROLLERS, 0])
+                    time.sleep(0.05)
                 time.sleep(0.05)
         except (cu.err.CUZeroHzErr):
             print("can't convert 0 hz to midi knum")
-        # finally:
-        #     if cu.cfg.as_script: # don't if in the python shell, as the midiout might still be needed
-        #         print("finished processing")
-        #         # de-allocating pointer to c++ instance
-        #         # MIDI_OUT_CLIENT.delete()
 
 
 # Note names

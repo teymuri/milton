@@ -15,7 +15,6 @@ from rtmidi.midiconstants import (
 
 
 _client_registry = dict()
-_client_port_registry = dict()
 # This is the client used on each processing, and
 # is set one per each proc call.
 _CLIENT = None
@@ -32,9 +31,6 @@ def _get_clientid_and_chnl(chnl):
     client_id = chnl // 16
     client_chnl = chnl % 16
     return client_id, client_chnl
-
-def get_client_ids():
-    return _client_registry.keys()
 
 def knum_to_hz(knum):
     return 440 * 2 ** ((knum - 69) / 12.)
@@ -79,7 +75,7 @@ _chnl_usage_trace = {
     # channel: [reference/usage, status]
     # status = is in use by a microtone (if usage > 0)
     # status False and reference>0 means in-use by equal tempered notes
-    chnl: [0, None] for chnl in range(160)
+    chnl: [0, None] for chnl in range(cu.cfg.port_count * 16)
 }
 
 def _is_chnl_free_for_micton(chnl):

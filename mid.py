@@ -193,7 +193,6 @@ async def _async_play_note(knum, dur, chnl, vel):
 
 async def _send_non_bend(t, non, bend, client):
     await asyncio.sleep(t)
-    print(t,non)
     if bend:
         client.send_message(bend)
     client.send_message(non)
@@ -201,7 +200,6 @@ async def _send_non_bend(t, non, bend, client):
 async def _send_nof_bend_reset(t,dur,nof, bend_reset, chnl_, client):
     global _chnl_usage_trace
     await asyncio.sleep(t+dur)
-    # print(t,dur,nof)
     client.send_message(nof)
     if bend_reset:
         _chnl_usage_trace[chnl_][0] -= 1
@@ -214,27 +212,11 @@ async def _send_nof_bend_reset(t,dur,nof, bend_reset, chnl_, client):
             _chnl_usage_trace[chnl_][1] = None
 
 
-def _sched_play_note(knum, chnl, vel):
+def _get_note_data(knum, chnl, vel):
     client_id, chnl = _get_clientid_and_chnl(chnl)
     client = _client_registry[client_id]
     non, nof, bend, bend_reset, chnl_ = _get_msgs(knum, chnl, vel)
     return non, nof, bend, bend_reset, chnl_, client
-    # try:
-    #     if bend:
-    #         client.send_message(bend)
-    #     client.send_message(non)
-    #     await asyncio.sleep(dur)
-    # finally:
-    #     client.send_message(nof)
-    #     if bend_reset:
-    #         _chnl_usage_trace[chnl_][0] -= 1
-    #         assert _chnl_usage_trace[chnl_][0] == 0
-    #         _chnl_usage_trace[chnl_][1] = None
-    #         client.send_message(bend_reset)
-    #     else:
-    #         _chnl_usage_trace[chnl_][0] -= 1
-    #         if _chnl_usage_trace[chnl_][0] == 0:
-    #             _chnl_usage_trace[chnl_][1] = None
 
 async def _async_play_chord(knums, dur, chnl, vel):
     global _chnl_usage_trace
@@ -293,44 +275,33 @@ async def _play_voice(knums, durs, chnl, vels):
             await _async_play_note(knum, durs[i], chnl, vels[i])
 
 
-async def _sched_play_voice(knums, ts, durs, chnl, vels):
-    for i, knum in enumerate(knums):
-        # await _sched_play_note(knum, ts[i], durs[i], chnl, vels[i])
-        non, nof, bend, bend_reset, chnl_, client = _sched_play_note(knum, chnl, vels[i])
-        os=_get_diff_times(ts)
-        x= _send_non_bend(ts[i], non, bend, client)
-        y= _send_nof_bend_reset(ts[i],durs[i],nof, bend_reset, chnl_, client)
-        return x, y
+# async def _sched_play_voice(knums, ts, durs, chnl, vels):
+#     for i, knum in enumerate(knums):
+#         # await _get_note_data(knum, ts[i], durs[i], chnl, vels[i])
+#         non, nof, bend, bend_reset, chnl_, client = _get_note_data(knum, chnl, vels[i])
+#         os=_get_diff_times(ts)
+#         x= _send_non_bend(ts[i], non, bend, client)
+#         y= _send_nof_bend_reset(ts[i],durs[i],nof, bend_reset, chnl_, client)
+#         return x, y
 
 def voice(knums, ts, durs, chnl, vels):
     x=[]
     os=_get_diff_times(ts)
     for i, knum in enumerate(knums):
-        # await _sched_play_note(knum, ts[i], durs[i], chnl, vels[i])
-        non, nof, bend, bend_reset, chnl_, client = _sched_play_note(knum, chnl, vels[i])
+        # await _get_note_data(knum, ts[i], durs[i], chnl, vels[i])
+        non, nof, bend, bend_reset, chnl_, client = _get_note_data(knum, chnl, vels[i])
         x.append( ( non, nof, bend, bend_reset, chnl_, client, ts[i],durs[i] ))  
         # x= _send_non_bend(os[i], non, bend, client)
         # y= _send_nof_bend_reset(os[i],durs[i],nof, bend_reset, chnl_, client)
     return x
 
-_proc_stime = None
+def note(knum=60, onset=0, dur=1, chnl=1, vel=127):
+    return ("n",) + _get_note_data(knum, chnl, vel) + (onset, dur)
 
+def chord(knums=(60, 64, 67), onset=0, dur=1, chnl=1, vel=127):
+    return ["c"] + [note(kn, onset, dur, chnl, vel) for kn in knums]
 
-def _get_diff_times(onsets):
-    try:
-        onsets = [0] + onsets
-    except TypeError:
-        onsets = (0,) + onsets
-    return [b - a for a, b in zip(onsets[:-1], onsets[1:])]
-
-async def play_poly(voices):
-    for knums, onsets, durs, chnls, vels in voices:
-        await  _sched_play_voice(knums, _get_diff_times(onsets), durs, chnls, vels)
-    # await asyncio.gather(
-    #     *(_play_voice(v[0], v[1], v[2], v[3]) for v in voices)
-    # )
-
-
+   
 
 def test():
     import random
@@ -433,6 +404,9 @@ def _panic(clients):
             time.sleep(0.05)
         time.sleep(0.05)
 
+def _is_only_note_seq(seq):
+    return all([isinstance(x, (int, float)) for x in seq])
+
 async def _async_proc(coros, args=None, client_id=0, poly=False):
     """Run the fun, processing the rtmidi calls and cleanup if called from within a script.
     If running from inside a script also dealloc the MIDI_OUT_CLIENT object.
@@ -448,14 +422,45 @@ async def _async_proc(coros, args=None, client_id=0, poly=False):
         try:
             ts=[]
             for coro in coros:
-                for n in coro:
-                    non,nof,bend,bend_r,c,cl,os,d=n
+                if coro[0] == 'n':
+                    non,nof,bend,bend_r,c,cl,os,d=coro[1:] # eine note
                     ts.append(asyncio.create_task(
                         _send_non_bend(os,non,bend,cl)
                     ))
                     ts.append(asyncio.create_task(
                         _send_nof_bend_reset(os,d,nof,bend_r,c,cl)
                     ))
+                elif coro[0] == 'c':
+                    for x in coro[1:]: # ist ein akkord oder voice?
+                        non,nof,bend,bend_r,c,cl,os,d=x[1:]
+                        ts.append(asyncio.create_task(
+                            _send_non_bend(os,non,bend,cl)
+                        ))
+                        ts.append(asyncio.create_task(
+                            _send_nof_bend_reset(os,d,nof,bend_r,c,cl)
+                        ))
+                else: # voice
+                    for x in coro:
+                        if x[0] == 'n':
+                            # breakpoint()
+                            non,nof,bend,bend_r,c,cl,os,d=x[1:] # eine note
+                            ts.append(asyncio.create_task(
+                                _send_non_bend(os,non,bend,cl)
+                            ))
+                            ts.append(asyncio.create_task(
+                                _send_nof_bend_reset(os,d,nof,bend_r,c,cl)
+                            ))
+                        elif x[0] == 'c': # chord in voice
+                            for y in x[1:]:
+                                non,nof,bend,bend_r,c,cl,os,d=y[1:] # note?
+                                ts.append(asyncio.create_task(
+                                    _send_non_bend(os,non,bend,cl)
+                                ))
+                                ts.append(asyncio.create_task(
+                                    _send_nof_bend_reset(os,d,nof,bend_r,c,cl)
+                                ))
+                        else:
+                            raise ValueError("Wassss?")
             await asyncio.gather(*ts)
         except (EOFError, KeyboardInterrupt, asyncio.CancelledError):
             _panic(clients)

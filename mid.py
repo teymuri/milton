@@ -2,9 +2,10 @@ import time
 import asyncio
 import rtmidi
 import rtmidi.midiutil
-import cu.cfg
-import cu.err
+import computil.cfg
+import computil.err
 from math import (modf, log2)
+from datetime import datetime, timedelta
 from contextlib import ExitStack
 from rtmidi.midiconstants import (
     NOTE_OFF, NOTE_ON, PITCH_BEND,
@@ -37,11 +38,11 @@ def knum_to_hz(knum):
 
 def hz_to_knum(hz):
     if hz == 0:
-        raise cu.err.CUZeroHzErr()
+        raise computil.err.CUZeroHzErr()
     return 12 * (log2(hz) - log2(440)) + 69
 
 def _get_bend_msgs(knum, knum_ipart, ch):
-    bend_val = NO_BEND_VAL + NO_BEND_VAL * (12 / cu.cfg.bend_range) * log2(knum_to_hz(knum) / knum_to_hz(knum_ipart))
+    bend_val = NO_BEND_VAL + NO_BEND_VAL * (12 / computil.cfg.bend_range) * log2(knum_to_hz(knum) / knum_to_hz(knum_ipart))
     # note that crazy fractional parts could result in loss of information(because of rounding)
     bend_val = round(bend_val)
     bend_msg = (PITCH_BEND + ch, bend_val & 0x7f, (bend_val >> 7) & 0x7f)
@@ -75,7 +76,7 @@ _chnl_usage_trace = {
     # channel: [reference/usage, status]
     # status = is in use by a microtone (if usage > 0)
     # status False and reference>0 means in-use by equal tempered notes
-    chnl: [0, None] for chnl in range(cu.cfg.port_count * 16)
+    chnl: [0, None] for chnl in range(computil.cfg.port_count * 16)
 }
 
 def _is_chnl_free_for_micton(chnl):
@@ -183,6 +184,50 @@ async def _async_play_note(knum, dur, chnl, vel):
             if _chnl_usage_trace[chnl_][0] == 0:
                 _chnl_usage_trace[chnl_][1] = None
 
+async def _send_non_bend(t, non, bend, client):
+    await asyncio.sleep(t)
+    print(t,non)
+    if bend:
+        client.send_message(bend)
+    client.send_message(non)
+
+async def _send_nof_bend_reset(t,dur,nof, bend_reset, chnl_, client):
+    global _chnl_usage_trace
+    await asyncio.sleep(t+dur)
+    # print(t,dur,nof)
+    client.send_message(nof)
+    if bend_reset:
+        _chnl_usage_trace[chnl_][0] -= 1
+        assert _chnl_usage_trace[chnl_][0] == 0
+        _chnl_usage_trace[chnl_][1] = None
+        client.send_message(bend_reset)
+    else:
+        _chnl_usage_trace[chnl_][0] -= 1
+        if _chnl_usage_trace[chnl_][0] == 0:
+            _chnl_usage_trace[chnl_][1] = None
+
+
+def _sched_play_note(knum, chnl, vel):
+    client_id, chnl = _get_clientid_and_chnl(chnl)
+    client = _client_registry[client_id]
+    non, nof, bend, bend_reset, chnl_ = _get_msgs(knum, chnl, vel)
+    return non, nof, bend, bend_reset, chnl_, client
+    # try:
+    #     if bend:
+    #         client.send_message(bend)
+    #     client.send_message(non)
+    #     await asyncio.sleep(dur)
+    # finally:
+    #     client.send_message(nof)
+    #     if bend_reset:
+    #         _chnl_usage_trace[chnl_][0] -= 1
+    #         assert _chnl_usage_trace[chnl_][0] == 0
+    #         _chnl_usage_trace[chnl_][1] = None
+    #         client.send_message(bend_reset)
+    #     else:
+    #         _chnl_usage_trace[chnl_][0] -= 1
+    #         if _chnl_usage_trace[chnl_][0] == 0:
+    #             _chnl_usage_trace[chnl_][1] = None
 
 async def _async_play_chord(knums, dur, chnl, vel):
     global _chnl_usage_trace
@@ -240,10 +285,43 @@ async def _play_voice(knums, durs, chnl, vels):
         else: # a single note
             await _async_play_note(knum, durs[i], chnl, vels[i])
 
+
+async def _sched_play_voice(knums, ts, durs, chnl, vels):
+    for i, knum in enumerate(knums):
+        # await _sched_play_note(knum, ts[i], durs[i], chnl, vels[i])
+        non, nof, bend, bend_reset, chnl_, client = _sched_play_note(knum, chnl, vels[i])
+        os=_get_diff_times(ts)
+        x= _send_non_bend(ts[i], non, bend, client)
+        y= _send_nof_bend_reset(ts[i],durs[i],nof, bend_reset, chnl_, client)
+        return x, y
+
+def voice(knums, ts, durs, chnl, vels):
+    x=[]
+    os=_get_diff_times(ts)
+    for i, knum in enumerate(knums):
+        # await _sched_play_note(knum, ts[i], durs[i], chnl, vels[i])
+        non, nof, bend, bend_reset, chnl_, client = _sched_play_note(knum, chnl, vels[i])
+        x.append( ( non, nof, bend, bend_reset, chnl_, client, ts[i],durs[i] ))  
+        # x= _send_non_bend(os[i], non, bend, client)
+        # y= _send_nof_bend_reset(os[i],durs[i],nof, bend_reset, chnl_, client)
+    return x
+
+_proc_stime = None
+
+
+def _get_diff_times(onsets):
+    try:
+        onsets = [0] + onsets
+    except TypeError:
+        onsets = (0,) + onsets
+    return [b - a for a, b in zip(onsets[:-1], onsets[1:])]
+
 async def play_poly(voices):
-    await asyncio.gather(
-        *(_play_voice(v[0], v[1], v[2], v[3]) for v in voices)
-    )
+    for knums, onsets, durs, chnls, vels in voices:
+        await  _sched_play_voice(knums, _get_diff_times(onsets), durs, chnls, vels)
+    # await asyncio.gather(
+    #     *(_play_voice(v[0], v[1], v[2], v[3]) for v in voices)
+    # )
 
 
 
@@ -276,15 +354,15 @@ def piccolo():
 _tmp_client = rtmidi.MidiOut(rtapi=rtmidi.API_LINUX_ALSA)
 _AVAILABLE_PORTS = [p.lower() for p in _tmp_client.get_ports()]
 # hopefuly ports are listed in right order by get_ports!!!
-SYNTH_PORT_IDXS = [i for i, p in enumerate(_AVAILABLE_PORTS) if cu.cfg.synth_id.lower() in p]
+SYNTH_PORT_IDXS = [i for i, p in enumerate(_AVAILABLE_PORTS) if computil.cfg.synth_id.lower() in p]
 _tmp_client.delete()
 
 def open_ports(): 
     """Opens output ports on each client. This should happen
     before sending anything to the processor."""
-    for i in range(cu.cfg.port_count):
+    for i in range(computil.cfg.port_count):
         # create a new output client and register it
-        client = rtmidi.MidiOut(name=f"cu output {i}", rtapi=rtmidi.API_LINUX_ALSA)
+        client = rtmidi.MidiOut(name=f"computil output {i}", rtapi=rtmidi.API_LINUX_ALSA)
         client.open_port(SYNTH_PORT_IDXS[i], f"client {i} port")
         _client_registry[i] = client
 
@@ -294,6 +372,7 @@ def open_ports():
 #         del client
 
 
+
 def proc(fun, args=None, client_id=0, poly=False):
     """Run the fun, processing the rtmidi calls and cleanup if called from within a script.
     If running from inside a script also dealloc the MIDI_OUT_CLIENT object.
@@ -301,6 +380,8 @@ def proc(fun, args=None, client_id=0, poly=False):
     fun which is your whole composition, don't call it multiple times
     via iteration etc."""
     clients = _client_registry.values()
+    global _proc_stime
+    _proc_stime = datetime.now()
     with ExitStack() as exit_stack:
         for client_ctx in clients:
             exit_stack.enter_context(client_ctx)
@@ -332,9 +413,47 @@ def proc(fun, args=None, client_id=0, poly=False):
                     client.send_message([CONTROL_CHANGE | chnl, RESET_ALL_CONTROLLERS, 0])
                     time.sleep(0.05)
                 time.sleep(0.05)
-        except (cu.err.CUZeroHzErr):
+        except (computil.err.CUZeroHzErr):
             print("can't convert 0 hz to midi knum")
 
+def _panic(clients):
+    print("\npanicking...")
+    for client in clients:
+        print(client, "panic")
+        for chnl in range(16):
+            client.send_message([CONTROL_CHANGE | chnl, ALL_SOUND_OFF, 0])
+            client.send_message([CONTROL_CHANGE | chnl, RESET_ALL_CONTROLLERS, 0])
+            time.sleep(0.05)
+        time.sleep(0.05)
+
+async def _async_proc(coros, args=None, client_id=0, poly=False):
+    """Run the fun, processing the rtmidi calls and cleanup if called from within a script.
+    If running from inside a script also dealloc the MIDI_OUT_CLIENT object.
+    proc should be given one single
+    fun which is your whole composition, don't call it multiple times
+    via iteration etc."""
+    clients = _client_registry.values()
+    global _proc_stime
+    _proc_stime = datetime.now()
+    with ExitStack() as exit_stack:
+        for client_ctx in clients:
+            exit_stack.enter_context(client_ctx)
+        try:
+            ts=[]
+            for coro in coros:
+                for n in coro:
+                    non,nof,bend,bend_r,c,cl,os,d=n
+                    ts.append(asyncio.create_task(
+                        _send_non_bend(os,non,bend,cl)
+                    ))
+                    ts.append(asyncio.create_task(
+                        _send_nof_bend_reset(os,d,nof,bend_r,c,cl)
+                    ))
+            await asyncio.gather(*ts)
+        except (EOFError, KeyboardInterrupt, asyncio.CancelledError):
+            _panic(clients)
+        except (computil.err.CUZeroHzErr):
+            print("can't convert 0 hz to midi knum")
 
 # Note names
 G3 = 55

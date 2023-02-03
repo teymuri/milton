@@ -26,12 +26,19 @@ SEMITONE_BEND_RANGE = 4096
 # todo: support more channels through more tracks/ports?
 _chnls_pool = set(range(16))
 
-
 def _get_clientid_and_chnl(chnl):
     chnl -= 1
     client_id = chnl // 16
     client_chnl = chnl % 16
     return client_id, client_chnl
+
+def bpm_to_sec(bpm):
+    """Returns the duration of one beat in tempo bpm."""
+    return 60 / bpm
+
+def rhythm_to_sec(rhy, tempo):
+    """"""
+    return rhy * 4.0 * bpm_to_sec(tempo)
 
 def knum_to_hz(knum):
     return 440 * 2 ** ((knum - 69) / 12.)

@@ -1,6 +1,6 @@
 import asyncio
-import mid
-from mid import ( 
+import computil.mid
+from computil.mid import ( 
     open_ports, voice
 )
 

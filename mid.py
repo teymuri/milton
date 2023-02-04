@@ -48,6 +48,9 @@ def hz_to_knum(hz):
         raise computil.err.CUZeroHzErr()
     return 12 * (log2(hz) - log2(440)) + 69
 
+def get_onset_durs(onsets):
+    return [b - a for a, b in zip(onsets[:-1], onsets[1:])]
+
 def _get_bend_msgs(knum, knum_ipart, ch):
     bend_val = NO_BEND_VAL + NO_BEND_VAL * (12 / computil.cfg.bend_range) * log2(knum_to_hz(knum) / knum_to_hz(knum_ipart))
     # note that crazy fractional parts could result in loss of information(because of rounding)
@@ -118,6 +121,7 @@ def _verify_setup_chnl_for_micton_ip(midi_chnl):
     if not _is_chnl_free_for_micton(midi_chnl):
         midi_chnl = _get_next_free_chnl_for_micton()
     # increment channel's usage
+    breakpoint()
     _chnl_usage_trace[midi_chnl][0] = 1
     # set status to in-use by a microtone
     _chnl_usage_trace[midi_chnl][1] = True
@@ -407,7 +411,7 @@ def _panic(clients):
 def _is_only_note_seq(seq):
     return all([isinstance(x, (int, float)) for x in seq])
 
-async def _async_proc(coros, args=None, client_id=0, poly=False):
+async def async_proc(coros, args=None, client_id=0, poly=False):
     """Run the fun, processing the rtmidi calls and cleanup if called from within a script.
     If running from inside a script also dealloc the MIDI_OUT_CLIENT object.
     proc should be given one single

@@ -2,6 +2,24 @@
 bunch of useful functions
 """
 
+def bpm_to_sec(bpm):
+    """Returns the duration of one beat in tempo bpm."""
+    return 60 / bpm
+
+def rhythm_to_sec(rhy, tempo):
+    """"""
+    return rhy * 4.0 * bpm_to_sec(tempo)
+
+def knum_to_hz(knum):
+    return 440 * 2 ** ((knum - 69) / 12.)
+
+def hz_to_knum(hz):
+    if hz == 0:
+        raise computil.err.CUZeroHzErr()
+    return 12 * (log2(hz) - log2(440)) + 69
+
+def get_onset_durs(onsets):
+    return [b - a for a, b in zip(onsets[:-1], onsets[1:])]
 def scale_to_sum(nums, _sum):
     """Scales a set of numbers such that they sum up 
     to _sum after scaling

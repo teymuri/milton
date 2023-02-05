@@ -32,24 +32,6 @@ def _get_clientid_and_chnl(chnl):
     client_chnl = chnl % 16
     return client_id, client_chnl
 
-def bpm_to_sec(bpm):
-    """Returns the duration of one beat in tempo bpm."""
-    return 60 / bpm
-
-def rhythm_to_sec(rhy, tempo):
-    """"""
-    return rhy * 4.0 * bpm_to_sec(tempo)
-
-def knum_to_hz(knum):
-    return 440 * 2 ** ((knum - 69) / 12.)
-
-def hz_to_knum(hz):
-    if hz == 0:
-        raise computil.err.CUZeroHzErr()
-    return 12 * (log2(hz) - log2(440)) + 69
-
-def get_onset_durs(onsets):
-    return [b - a for a, b in zip(onsets[:-1], onsets[1:])]
 
 def _get_bend_msgs(knum, knum_ipart, ch):
     bend_val = NO_BEND_VAL + NO_BEND_VAL * (12 / computil.cfg.bend_range) * log2(knum_to_hz(knum) / knum_to_hz(knum_ipart))
@@ -411,7 +393,7 @@ def _panic(clients):
 def _is_only_note_seq(seq):
     return all([isinstance(x, (int, float)) for x in seq])
 
-async def async_proc(coros, args=None, client_id=0, poly=False):
+async def rtmid_proc(coros, args=None, client_id=0, poly=False):
     """Run the fun, processing the rtmidi calls and cleanup if called from within a script.
     If running from inside a script also dealloc the MIDI_OUT_CLIENT object.
     proc should be given one single

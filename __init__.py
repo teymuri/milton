@@ -1,11 +1,7 @@
 import asyncio
-# import computil.mi
-# from computil.mid import ( 
-#     open_ports, note, chord,
-#     rhythm_to_sec, get_onset_durs
-# )
-from computil.mid import *
+from computil.rtmid import *
+from computil.aux import *
 
-def proc(*ugens):
+def proc(*items):
     """This is computil's main processing function."""
-    asyncio.run(async_proc(ugens))
+    asyncio.run(rtmid_proc(items))

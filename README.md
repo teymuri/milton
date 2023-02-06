@@ -32,4 +32,18 @@ This package is a work-in-progress.
 
 # and send it to the processor to play it
 >>> cu.proc(a_min)
+
+# now let us give the processor a list of notes/chords to play:
+# the chromatic scale starting from the middle c upwards.
+>>> voice = [cu.note(knum=60 + i, onset=i, dur=0.1) for i in range(12)]
+>>> cu.proc(voice)
+
+# playing polyphony is as easy as passing multiple lists of note/chords
+# to the processor:
+>>> voice1 = [cu.note(knum=60 + i, onset=i, dur=0.5) for i in range(12)]
+>>> voice2 = [cu.note(knum=48 + i, onset=i + 0.5, dur=0.5) for i in range(12)]
+>>> voice3 = [cu.chord(knums=[60+i, 60+i+4, 60+i+7], onset=i + 0.2, dur=0.5) for i in range(12)]
+
+>>> cu.proc(voice1, voice2, voice3)
+
 ```

@@ -24,4 +24,4 @@ def piano1(trope, amp, chan):
     return notes
 
 cu.open_ports()
-cu.proc(piano1(phasing_trope, 100, 1))
+cu.proc(piano1(phasing_trope, 50, 1))

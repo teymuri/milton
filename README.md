@@ -1,8 +1,9 @@
 # Composition Utilities
 
-The aim of this package is to provide a higher level, musically more expressive and abstract set of subroutines to be
-integrated in compositional workflows.
-This package is a work-in-progress.
+The aim of this package is to provide a higher level, musically more expressive and abstract set of routines.
+It is meant to make expressing algorithmic music more intuitive and easy, by taking care of low-level MIDI implementation
+so that the composer can focus on his composition rather than sending MIDI messages!
+This package is a work-in-progress and in active development. Your feedback is very welcome! :-)
 
 # Quick Start
 
@@ -21,7 +22,7 @@ This package is a work-in-progress.
 
 # the full signature of the note function has the parameters:
 # knum: the midi key number
-# onset: the time to play the note in seconds (default is 0)
+# onset: is the ongoing time expressed in seconds, with respect to the process start time 0 (default is 0, which means now)
 # dur: the duration of the note
 # chnl: the midi channel to play the note on
 # vel: the dynamic of the note

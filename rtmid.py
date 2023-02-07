@@ -224,12 +224,6 @@ async def rtmidi_proc(events, from_shell):
     proc should be given one single
     fun which is your whole composition, don't call it multiple times
     via iteration etc."""
-    # clients = _client_registry.values()
-    # # global _proc_stime
-    # # _proc_stime = datetime.now()
-    # # with ExitStack() as exit_stack:
-    # #     for client_ctx in clients:
-    # #         exit_stack.enter_context(client_ctx)
     try:
         ts=[]
         for event in events:
@@ -271,6 +265,7 @@ async def rtmidi_proc(events, from_shell):
                             ))
                     else:
                         raise ValueError("Wassss?")
+        time.sleep(0)
         await asyncio.gather(*ts)
     except (EOFError, KeyboardInterrupt, asyncio.CancelledError):
         _panic()

@@ -2,11 +2,16 @@
 bunch of useful functions
 """
 
+def pret(x):
+    """Prints and returns the thing, good for debuging."""
+    print(x)
+    return x
+
 def bpm_to_sec(bpm):
     """Returns the duration of one beat in tempo bpm."""
     return 60 / bpm
 
-def rhythm_to_sec(rhy, tempo):
+def rhy_to_sec(rhy, tempo):
     """"""
     return rhy * 4.0 * bpm_to_sec(tempo)
 
@@ -20,6 +25,15 @@ def hz_to_knum(hz):
 
 def get_onset_durs(onsets):
     return [b - a for a, b in zip(onsets[:-1], onsets[1:])]
+
+def durs_to_onsets(durs):
+    os = []
+    o = 0
+    for d in durs:
+        o += d
+        os.append(o)
+    return os
+
 def scale_to_sum(nums, _sum):
     """Scales a set of numbers such that they sum up 
     to _sum after scaling

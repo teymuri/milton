@@ -1,7 +1,8 @@
-import asyncio
-from computil.rtmid import *
-from computil.aux import *
 import __main__
+import asyncio
+from rtmid import *
+from aux import *
+
 
 def proc(events):
     """This is computil's main processing function."""

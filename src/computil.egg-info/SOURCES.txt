@@ -1,0 +1,6 @@
+README.md
+setup.py
+src/computil.egg-info/PKG-INFO
+src/computil.egg-info/SOURCES.txt
+src/computil.egg-info/dependency_links.txt
+src/computil.egg-info/top_level.txt

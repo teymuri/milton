@@ -218,7 +218,7 @@ def _panic():
         time.sleep(0.05)
 
 
-async def rtmidi_proc(coros, from_shell):
+async def rtmidi_proc(events, from_shell):
     """Run the fun, processing the rtmidi calls and cleanup if called from within a script.
     If running from inside a script also dealloc the MIDI_OUT_CLIENT object.
     proc should be given one single
@@ -232,17 +232,17 @@ async def rtmidi_proc(coros, from_shell):
     # #         exit_stack.enter_context(client_ctx)
     try:
         ts=[]
-        for coro in coros:
-            if coro[0] == 'n':
-                non,nof,bend,bend_r,c,cl,os,d=coro[1:] # eine note
+        for event in events:
+            if event[0] == 'n':
+                non,nof,bend,bend_r,c,cl,os,d=event[1:] # eine note
                 ts.append(asyncio.create_task(
                     _send_non_bend(os,non,bend,cl)
                 ))
                 ts.append(asyncio.create_task(
                     _send_nof_bend_reset(os,d,nof,bend_r,c,cl)
                 ))
-            elif coro[0] == 'c':
-                for x in coro[1:]: # ist ein akkord oder voice?
+            elif event[0] == 'c':
+                for x in event[1:]: # ist ein akkord oder voice?
                     non,nof,bend,bend_r,c,cl,os,d=x[1:]
                     ts.append(asyncio.create_task(
                         _send_non_bend(os,non,bend,cl)
@@ -251,9 +251,8 @@ async def rtmidi_proc(coros, from_shell):
                         _send_nof_bend_reset(os,d,nof,bend_r,c,cl)
                     ))
             else: # voice
-                for x in coro:
+                for x in event:
                     if x[0] == 'n':
-                        # breakpoint()
                         non,nof,bend,bend_r,c,cl,os,d=x[1:] # eine note
                         ts.append(asyncio.create_task(
                             _send_non_bend(os,non,bend,cl)

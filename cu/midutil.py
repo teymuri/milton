@@ -35,7 +35,6 @@ def midiutil_proc(events, path):
     file_obj = mu.MIDIFile(tracks_count)
     for i in range(tracks_count):
         file_obj.addTempo(i, 0, 60)
-    print(tracks_count)
     vidx=0
     for e in events:
         if e[0] == "n":

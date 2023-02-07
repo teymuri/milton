@@ -9,6 +9,7 @@ setup(
 	packages=['cu'],
 	install_requires=[
 		'python-rtmidi',
+        'MIDIUtil'
 	],
 )
 

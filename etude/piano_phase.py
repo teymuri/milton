@@ -1,4 +1,4 @@
-import computil as cu
+import cu
 
 
 cu.open_ports()

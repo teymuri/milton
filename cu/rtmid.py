@@ -218,7 +218,7 @@ def _panic():
         time.sleep(0.05)
 
 
-async def rtmidi_proc(events, interact):
+async def rtmidi_proc(events, script):
     """Run the fun, processing the rtmidi calls and cleanup if called from within a script.
     If running from inside a script also dealloc the MIDI_OUT_CLIENT object.
     proc should be given one single
@@ -271,7 +271,7 @@ async def rtmidi_proc(events, interact):
     except (cu.err.CUZeroHzErr):
         print("can't convert 0 hz to midi knum")
     finally:
-        if interact: # done running python script.py, close and cleanup
+        if script: # done running python script.py, close and cleanup
             close_ports()
 
 # Note names

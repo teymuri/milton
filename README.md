@@ -1,8 +1,9 @@
 # Composition Utilities
 
-The aim of this package is to provide a higher level, musically more expressive and abstract set of subroutines to be
-integrated in compositional workflows.
-This package is a work-in-progress.
+The aim of this package is to provide a higher level, musically more expressive and abstract set of routines.
+It is meant to make expressing algorithmic music more intuitive and easy, by taking care of low-level MIDI implementation
+so that the composer can focus on his composition!
+This package is a work-in-progress and in active development. Your feedback is very welcome! :-)
 
 # Quick Start
 

@@ -85,5 +85,7 @@ def pphase(trope, stay, move, amp):
 
 # print(phasing_tempo_curve(12, 1,1))
 cu.proc(
-    pphase(phasing_trope, 1, 8, 100)
+    pphase(phasing_trope, 1, 20, 100),
+    # [piano1(phasing_trope, 1, 1, 100, 1)],
+    "/tmp/ppiano.mid"
 )

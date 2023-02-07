@@ -7,9 +7,6 @@ setup(
 	author='Amir Teymuri',
 	author_email='amiratwork22@gmail.com',
 	packages=['cu'],
-	install_requires=[
-		'python-rtmidi',
-        'MIDIUtil'
-	],
+	install_requires=['python-rtmidi', 'MIDIUtil'],
 )
 

@@ -2,13 +2,19 @@ import __main__
 import asyncio
 from .rtmid import *
 from .aux import *
+from .midutil import *
 
 
-def proc(events):
+try:
+    from __main__ import __file__ # running from shell?
+    _INTERACT = True
+except ImportError:
+    _INTERACT = False
+
+
+def proc(events, path=""):
     """This is computil's main processing function."""
-    try:
-        print(f"processing script {__main__.__file__}")
-        asyncio.run(rtmidi_proc(events, True))
-    except AttributeError:
-        asyncio.run(rtmidi_proc(events, False))
-
+    if path:
+        midiutil_proc(events, path)
+    else:
+        asyncio.run(rtmidi_proc(events, _INTERACT))

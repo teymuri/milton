@@ -190,7 +190,7 @@ def piccolo():
 _tmp_client = rtmidi.MidiOut(rtapi=rtmidi.API_LINUX_ALSA)
 _AVAILABLE_PORTS = [p.lower() for p in _tmp_client.get_ports()]
 # hopefuly ports are listed in right order by get_ports!!!
-SYNTH_PORT_IDXS = [i for i, p in enumerate(_AVAILABLE_PORTS) if cu.cfg.synth_id.lower() in p]
+_SYNTH_PORT_IDXS = [i for i, p in enumerate(_AVAILABLE_PORTS) if cu.cfg.synth_id.lower() in p]
 _tmp_client.delete()
 
 def open_ports(): 
@@ -199,7 +199,7 @@ def open_ports():
     for i in range(cu.cfg.port_count):
         # create a new output client and register it
         client = rtmidi.MidiOut(name=f"computil output {i}", rtapi=rtmidi.API_LINUX_ALSA)
-        client.open_port(SYNTH_PORT_IDXS[i], f"client {i} port")
+        client.open_port(_SYNTH_PORT_IDXS[i], f"client {i} port")
         _client_registry[i] = client
 
 def close_ports():
@@ -218,7 +218,7 @@ def _panic():
         time.sleep(0.05)
 
 
-async def rtmidi_proc(events, from_shell):
+async def rtmidi_proc(events, interact):
     """Run the fun, processing the rtmidi calls and cleanup if called from within a script.
     If running from inside a script also dealloc the MIDI_OUT_CLIENT object.
     proc should be given one single
@@ -265,14 +265,13 @@ async def rtmidi_proc(events, from_shell):
                             ))
                     else:
                         raise ValueError("Wassss?")
-        time.sleep(0)
         await asyncio.gather(*ts)
     except (EOFError, KeyboardInterrupt, asyncio.CancelledError):
         _panic()
     except (cu.err.CUZeroHzErr):
         print("can't convert 0 hz to midi knum")
     finally:
-        if from_shell: # done running python script.py, close and cleanup
+        if interact: # done running python script.py, close and cleanup
             close_ports()
 
 # Note names

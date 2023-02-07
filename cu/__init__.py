@@ -1,7 +1,7 @@
 import __main__
 import asyncio
-from rtmid import *
-from aux import *
+from .rtmid import *
+from .aux import *
 
 
 def proc(events):

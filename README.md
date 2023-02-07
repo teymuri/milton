@@ -21,7 +21,7 @@ This package is a work-in-progress.
 
 # the full signature of the note function has the parameters:
 # knum: the midi key number
-# onset: the time to play the note in seconds (default is 0)
+# onset: is the ongoing time expressed in seconds, with respect to the process start time 0 (default is 0, which means now)
 # dur: the duration of the note
 # chnl: the midi channel to play the note on
 # vel: the dynamic of the note

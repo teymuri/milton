@@ -12,9 +12,9 @@ except ImportError: # running from shell
     _SCRIPT = False
 
 
-def proc(events, path=""):
+def proc(events, mid=""):
     """This is computil's main processing function."""
-    if path:
-        midiutil_proc(events, path)
-    else:
+    if mid: # write to a midi file
+        midiutil_proc(events, mid)
+    else: # play
         asyncio.run(rtmidi_proc(events, _SCRIPT))

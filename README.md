@@ -9,7 +9,7 @@ This package is a work-in-progress and in active development. Your feedback is v
 
 ```python
 # import the module
->>> import computil as cu
+>>> import cu
 
 # initialize the module
 >>> cu.open_ports()
@@ -47,4 +47,7 @@ This package is a work-in-progress and in active development. Your feedback is v
 
 >>> cu.proc([voice1, voice2, voice3])
 
+# If you want to write a midi file to the disk instead of playing it back
+# pass a path string as the second argument to the processor
+>>> cu.proc([voice1, voice2, voice3], "/tmp/my-polyphony.mid")
 ```

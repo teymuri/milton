@@ -37,12 +37,15 @@ MAJ4 = [0, 3, 7, 12]
 open_ports()
 def trem():
     ts =[]
-    chs = [[62+i for i in MAJ4] for _ in range(10)]
+    chs = [[30+i+j for i in MAJ4] for j in range(10)]
     x=0
+    j=0
     for i in range(1000):
-        d = .0001 + i * .001
-        dd = 0.5 - i * .1
-        ts.append(chord(chs[0], onset=d,dur=.0001, vel=100, chnl=1))
+        j=x%10
+        d = i * (x % 10)* .01
+        # dd = 0.5 - i * .1
+        ts.append(note(60, onset=d,dur=.01, vel=100, chnl=3))
+        x+= 1
         # for x in range(10):
         #
             # print(dd)
@@ -53,7 +56,8 @@ def trem():
 
 proc(
     [trem()],
-    "/tmp/test.mid"
+    # [[chord([62+i for i in MAJ4], onset=i*.001, dur=.001) for i in range(10)]],
+    # "/tmp/test.mid"
 )
 
 

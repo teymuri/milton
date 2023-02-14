@@ -23,8 +23,8 @@ def hz_to_knum(hz):
         raise computil.err.CUZeroHzErr()
     return 12 * (log2(hz) - log2(440)) + 69
 
-def get_onset_durs(onsets):
-    return [b - a for a, b in zip(onsets[:-1], onsets[1:])]
+def get_intervals(ns):
+    return [b - a for a, b in zip(ns[:-1], ns[1:])]
 
 def durs_to_onsets(durs):
     os = []

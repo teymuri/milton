@@ -2,22 +2,6 @@ import midiutil as mu
 
 
 
-def _find_tracks_count(events):
-    chnls = set()
-    for e in events:
-        if e[0] == "n":
-            non,nof,bend,bend_r,c,cl,os,d=event[1:] # eine note
-            chnls.add(c)
-        elif e[0] == "c":
-            for x in e[1:]: # ist ein akkord oder voice?
-                non,nof,bend,bend_r,c,cl,os,d=x[1:]
-                chnls.add(c)
-        else:
-            for x in e:
-                if x[0] == 'n':
-                    non,nof,bend,bend_r,c,cl,os,d=x[1:] # eine note
-                    chnls.add(c)
-    return chnls
 
 
 def midiutil_proc(events, path):
@@ -33,6 +17,7 @@ def midiutil_proc(events, path):
             tracks["voices"] += 1
     tracks_count = sum(tracks.values())
     file_obj = mu.MIDIFile(tracks_count)
+    # breakpoint()
     for i in range(tracks_count):
         file_obj.addTempo(i, 0, 60)
     vidx=0

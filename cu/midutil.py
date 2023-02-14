@@ -16,8 +16,7 @@ def midiutil_proc(events, path):
         except TypeError:
             tracks["voices"] += 1
     tracks_count = sum(tracks.values())
-    file_obj = mu.MIDIFile(tracks_count)
-    # breakpoint()
+    file_obj = mu.MIDIFile(tracks_count, deinterleave=False)
     for i in range(tracks_count):
         file_obj.addTempo(i, 0, 60)
     vidx=0

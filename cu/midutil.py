@@ -22,7 +22,7 @@ def midiutil_proc(events, path):
     vidx=0
     for e in events:
         if e[0] == "n":
-            non,nof,bend,bend_r,c,cl,os,d=event[1:] # eine note
+            non,nof,bend,bend_r,c,cl,os,d=e[1:] # eine note
             file_obj.addNote(0, c, non[1], os, d, non[2])
         elif e[0] == "c": # chord
             for x in e[1:]: # ist ein akkord oder voice?

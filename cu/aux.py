@@ -2,6 +2,9 @@
 bunch of useful functions
 """
 
+
+
+
 def pret(x):
     """Prints and returns the thing, good for debuging."""
     print(x)

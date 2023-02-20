@@ -158,12 +158,13 @@ def _get_note_data(knum, chnl, vel):
 
 
 def note(knum=60, onset=0, dur=1, chnl=1, vel=127):
-    return ("n",) + _get_note_data(knum, chnl, vel) + (onset, dur)
+    data = _get_note_data(knum, chnl, vel)
+    return ("n",) + data + (onset, dur, f"note kn:{knum} onset:{onset} dur:{dur} chnl:{chnl} vel:{vel}")
 
 def chord(knums=(60, 64, 67), onset=0, dur=1, chnl=1, vel=127):
     return ["c"] + [note(kn, onset, dur, chnl, vel) for kn in knums]
 
-   
+
 
 
 
@@ -207,7 +208,7 @@ async def rtmidi_proc(events, script):
         ts=[]
         for event in events:
             if event[0] == 'n':
-                non,nof,bend,bend_r,c,cl,os,d=event[1:] # eine note
+                non,nof,bend,bend_r,c,cl,os,d,_=event[1:] # eine note
                 ts.append(asyncio.create_task(
                     _send_non_bend(os,non,bend,cl)
                 ))
@@ -216,7 +217,7 @@ async def rtmidi_proc(events, script):
                 ))
             elif event[0] == 'c':
                 for x in event[1:]: # ist ein akkord oder voice?
-                    non,nof,bend,bend_r,c,cl,os,d=x[1:]
+                    non,nof,bend,bend_r,c,cl,os,d,_=x[1:]
                     ts.append(asyncio.create_task(
                         _send_non_bend(os,non,bend,cl)
                     ))
@@ -226,7 +227,7 @@ async def rtmidi_proc(events, script):
             else: # voice
                 for x in event:
                     if x[0] == 'n':
-                        non,nof,bend,bend_r,c,cl,os,d=x[1:] # eine note
+                        non,nof,bend,bend_r,c,cl,os,d,_=x[1:] # eine note
                         ts.append(asyncio.create_task(
                             _send_non_bend(os,non,bend,cl)
                         ))
@@ -235,7 +236,7 @@ async def rtmidi_proc(events, script):
                         ))
                     elif x[0] == 'c': # chord in voice
                         for y in x[1:]:
-                            non,nof,bend,bend_r,c,cl,os,d=y[1:] # note?
+                            non,nof,bend,bend_r,c,cl,os,d,_=y[1:] # note?
                             ts.append(asyncio.create_task(
                                 _send_non_bend(os,non,bend,cl)
                             ))

@@ -8,22 +8,6 @@ phasing_trope = (64, 66, 71, 73, 74, 66, 64, 73, 71, 66, 74, 73)
 phasing_pulse = 1/24
 phasing_tempo = 72
 
-def piano1(trope, amp, chan):
-    tlen = len(trope)
-    cycs = tlen
-    rate = cu.rhy_to_sec(phasing_pulse, phasing_tempo)
-    notes = []
-    repeat = tlen * cycs
-    i = 0
-    while repeat:
-        x = i % tlen
-        k = trope[x]
-        notes.append(cu.note(onset=cu.pret(rate*i), knum=k, 
-                            dur=rate * 1.5, vel=amp,
-                            chnl=chan))
-        i += 1
-        repeat -= 1
-    return notes
 def piano1(trope, stay, move, amp, chan):
     tlen = len(trope)
     cycs = tlen
@@ -34,7 +18,6 @@ def piano1(trope, stay, move, amp, chan):
     reps = repeat +coda
     i = 0
     while reps:
-        print(i)
         x = i % tlen
         k = trope[x]
         notes.append(cu.note(onset=cu.pret(rate*i), knum=k, 
@@ -58,14 +41,11 @@ def piano2(trope, stay, move, amp, chan):
     curve = cu.pret(phasing_tempo_curve(tlen, stay, move))
     clen = len(curve)
     rate = cu.rhy_to_sec(phasing_pulse, phasing_tempo)
-    # print(rate)
     repeat = clen * cycs + coda
-    # repeat= tlen*4
     i = 0
     notes = []
     o = 0
     while repeat:
-        # print(i)
         k = trope[i % tlen]
         c = curve[i % clen]
         notes.append(
@@ -83,9 +63,8 @@ def pphase(trope, stay, move, amp):
     return piano1(trope, stay, move, amp, 1), \
             piano2(trope, stay, move, amp, 2)
 
-# print(phasing_tempo_curve(12, 1,1))
 cu.proc(
     pphase(phasing_trope, 1, 20, 100),
-    # [piano1(phasing_trope, 1, 1, 100, 1)],
-    "/tmp/ppiano.mid"
+    write to midi
+    "/tmp/pphase.mid"
 )

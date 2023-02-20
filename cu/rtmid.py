@@ -13,7 +13,15 @@ from rtmidi.midiconstants import (
     RESET_ALL_CONTROLLERS
 )
 
-
+def _get_api(api):
+    return {
+        "unspec": rtmidi.API_UNSPECIFIED,
+        "core": rtmidi.API_MACOSX_CORE,
+        "alsa": rtmidi.API_LINUX_ALSA,
+        "jack": rtmidi.API_UNIX_JACK,
+        "win": rtmidi.API_WINDOWS_MM,
+        "dummy": rtmidi.API_RTMIDI_DUMMY
+    }[api]
 
 _client_registry = dict()
 _chnls_usage = {
@@ -30,9 +38,6 @@ _NO_BEND_RESET_LSB = _NO_BEND_VAL & 0x7f # isthis msb or lsb for send_message?!?
 _NO_BEND_RESET_MSB = (_NO_BEND_VAL >> 7) & 0x7f
 _SEMITONE_BEND_RANGE = 4096
 
-# save a list of available ports
-_tmp_client = rtmidi.MidiOut(rtapi=rtmidi.API_LINUX_ALSA)
-_AVAILABLE_PORTS = [p.lower() for p in _tmp_client.get_ports()]
 
 def _get_clientid_and_chnl(chnl):
     chnl -= 1
@@ -168,16 +173,19 @@ def chord(knums=(60, 64, 67), onset=0, dur=1, chnl=1, vel=127):
 
 
 
-def open_ports(): 
+def init(): 
     """Opens output ports on each client. This should happen
     before sending anything to the processor."""
-    global _tmp_client
+    api = _get_api(cu.cfg.api)
+    # save a list of available ports
+    _tmp_client = rtmidi.MidiOut(rtapi=api)
+    _AVAILABLE_PORTS = [p.lower() for p in _tmp_client.get_ports()]
     # hopefuly ports are listed in right order by get_ports!!!
     _SYNTH_PORT_IDXS = [i for i, p in enumerate(_AVAILABLE_PORTS) if cu.cfg.synth_id.lower() in p]
     _tmp_client.delete()
     for i in range(cu.cfg.port_count):
         # create a new output client and register it
-        client = rtmidi.MidiOut(name=f"computil output {i}", rtapi=rtmidi.API_LINUX_ALSA)
+        client = rtmidi.MidiOut(name=f"computil output {i}", rtapi=api)
         client.open_port(_SYNTH_PORT_IDXS[i], f"client {i} port")
         _client_registry[i] = client
 

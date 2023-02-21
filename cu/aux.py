@@ -2,7 +2,7 @@
 bunch of useful functions
 """
 
-
+from random import random
 
 
 def pret(x):
@@ -53,3 +53,8 @@ def minmax_norm(x, minx, maxx, low_bound=0, up_bound=1):
     rescale_rng = up_bound - low_bound
     return low_bound + ((x - minx) * rescale_rng) / (maxx - minx) 
 
+def ascprob(idx, seqlen):
+    if random() < minmax_norm(idx, 0, seqlen-1):
+        return True
+    else:
+        return False

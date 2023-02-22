@@ -54,7 +54,23 @@ def minmax_norm(x, minx, maxx, low_bound=0, up_bound=1):
     return low_bound + ((x - minx) * rescale_rng) / (maxx - minx) 
 
 def ascprob(idx, seqlen):
-    if random() < minmax_norm(idx, 0, seqlen-1):
-        return True
-    else:
-        return False
+    r = random()< minmax_norm(idx, 0, seqlen-1)
+    return r
+
+# def ascprob(idx, seqlen):
+#     return 0 <= random() < (idx + 1) / seqlen
+
+def get_onset(note):
+    return note[-1]["onset"]
+
+def get_chnl(note):
+    return note[-1]["chnl"]
+
+def get_vel(note):
+    return note[-1]["vel"]
+
+def get_knum(note):
+    return note[-1]["knum"]
+
+def get_dur(note):
+    return note[-1]["dur"]

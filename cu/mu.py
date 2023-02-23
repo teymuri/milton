@@ -1,10 +1,14 @@
-import midiutil as mu
+"""
+This file contains abstracts around 
+https://github.com/MarkCWirt/MIDIUtil.git
+"""
+import midiutil
 
 
 
 
 
-def midiutil_proc(events, path):
+def proc(events, path):
     # find out number of tracks
     tracks = {"frei": 0, "voices": 0}
     for e in events:
@@ -16,7 +20,7 @@ def midiutil_proc(events, path):
         except TypeError:
             tracks["voices"] += 1
     tracks_count = sum(tracks.values())
-    file_obj = mu.MIDIFile(tracks_count, deinterleave=False)
+    file_obj = midiutil.MIDIFile(tracks_count, deinterleave=False)
     for i in range(tracks_count):
         file_obj.addTempo(i, 0, 60)
     vidx=0

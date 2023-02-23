@@ -162,12 +162,12 @@ def _get_note_data(knum, chnl, vel):
     return non, nof, bend, bend_reset, chnl_, client
 
 
-def note(knum=60, onset=0, dur=1, chnl=1, vel=127):
-    data = _get_note_data(knum, chnl, vel)
-    return ("n",) + data + (onset, dur, {"knum":knum,"onset":onset,"dur":dur,"chnl":chnl,"vel":vel})
+# def note(knum=60, onset=0, dur=1, chnl=1, vel=127):
+#     data = _get_note_data(knum, chnl, vel)
+#     return ("n",) + data + (onset, dur, {"knum":knum,"onset":onset,"dur":dur,"chnl":chnl,"vel":vel})
 
-def chord(knums=(60, 64, 67), onset=0, dur=1, chnl=1, vel=127):
-    return ["c"] + [note(kn, onset, dur, chnl, vel) for kn in knums]
+# def chord(knums=(60, 64, 67), onset=0, dur=1, chnl=1, vel=127):
+#     return ["c"] + [note(kn, onset, dur, chnl, vel) for kn in knums]
 
 
 
@@ -206,7 +206,7 @@ def _panic():
         time.sleep(0.05)
 
 
-async def rtmidi_proc(events, script):
+async def proc(events, script):
     """Run the fun, processing the rtmidi calls and cleanup if called from within a script.
     If running from inside a script also dealloc the MIDI_OUT_CLIENT object.
     proc should be given one single

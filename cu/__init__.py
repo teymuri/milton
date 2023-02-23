@@ -1,8 +1,8 @@
 import __main__
 import asyncio
-from .rtmid import *
-from .aux import *
-from .midutil import *
+import cu.rt
+import cu.mu
+from .common import *
 
 
 try:
@@ -15,6 +15,6 @@ except ImportError: # running from shell
 def proc(events, mid=""):
     """This is computil's main processing function."""
     if mid: # write to a midi file
-        midiutil_proc(events, mid)
-    else: # play
-        asyncio.run(rtmidi_proc(events, _SCRIPT))
+        mu.proc(events, mid)
+    else: # play now
+        asyncio.run(rt.proc(events, _SCRIPT))

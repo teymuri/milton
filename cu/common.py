@@ -3,8 +3,15 @@ bunch of useful functions
 """
 
 from random import random
+from cu.rt import _get_note_data
 
 
+def note(knum=60, onset=0, dur=1, chnl=1, vel=127):
+    data = _get_note_data(knum, chnl, vel)
+    return ("n",) + data + (onset, dur, {"knum":knum,"onset":onset,"dur":dur,"chnl":chnl,"vel":vel})
+
+def chord(knums=(60, 64, 67), onset=0, dur=1, chnl=1, vel=127):
+    return ["c"] + [note(kn, onset, dur, chnl, vel) for kn in knums]
 def pret(x):
     """Prints and returns the thing, good for debuging."""
     print(x)

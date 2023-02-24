@@ -39,6 +39,8 @@ def get_intervals(ns):
 
 def durs_to_onsets(durs):
     """Returns a list of (accumulated onset, corresponding duration)"""
+    if isinstance(durs, tuple):
+        durs = list(durs) # convert to pop
     os = 0
     onsets = []
     while durs:

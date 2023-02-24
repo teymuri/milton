@@ -36,13 +36,16 @@ def hz_to_knum(hz):
 def get_intervals(ns):
     return [b - a for a, b in zip(ns[:-1], ns[1:])]
 
+
 def durs_to_onsets(durs):
-    os = []
-    o = 0
-    for d in durs:
-        o += d
-        os.append(o)
-    return os
+    """Returns a list of (accumulated onset, corresponding duration)"""
+    os = 0
+    onsets = []
+    while durs:
+        d = durs.pop(0)
+        onsets.append((os, d))
+        os += d
+    return onsets
 
 def scale_to_sum(nums, _sum):
     """Scales a set of numbers such that they sum up 

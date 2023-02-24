@@ -13,7 +13,7 @@ except ImportError: # running from shell
 
 
 def proc(events, mid=""):
-    """This is computil's main processing function."""
+    """Processes every thing!"""
     if mid: # write to a midi file
         mu.proc(events, mid)
     else: # play now

@@ -7,11 +7,11 @@ from cu.rt import _get_note_data
 
 
 def note(knum=60, onset=0, dur=1, chnl=1, vel=127):
-    data = _get_note_data(knum, chnl, vel)
-    return ("n",) + data + (onset, dur, {"knum":knum,"onset":onset,"dur":dur,"chnl":chnl,"vel":vel})
+    return ("n",) + _get_note_data(knum, chnl, vel) + (onset, dur, {"knum":knum,"onset":onset,"dur":dur,"chnl":chnl,"vel":vel})
 
 def chord(knums=(60, 64, 67), onset=0, dur=1, chnl=1, vel=127):
     return ["c"] + [note(kn, onset, dur, chnl, vel) for kn in knums]
+
 def pret(x):
     """Prints and returns the thing, good for debuging."""
     print(x)
@@ -67,17 +67,18 @@ def ascprob(idx, seqlen):
 # def ascprob(idx, seqlen):
 #     return 0 <= random() < (idx + 1) / seqlen
 
-def get_onset(note):
-    return note[-1]["onset"]
+def get_onset(nt):
+    """Returns note's onset time."""
+    return nt[-1]["onset"]
 
-def get_chnl(note):
-    return note[-1]["chnl"]
+def get_chnl(nt):
+    return nt[-1]["chnl"]
 
-def get_vel(note):
-    return note[-1]["vel"]
+def get_vel(nt):
+    return nt[-1]["vel"]
 
-def get_knum(note):
-    return note[-1]["knum"]
+def get_knum(nt):
+    return nt[-1]["knum"]
 
-def get_dur(note):
-    return note[-1]["dur"]
+def get_dur(nt):
+    return nt[-1]["dur"]

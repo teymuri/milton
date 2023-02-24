@@ -162,16 +162,6 @@ def _get_note_data(knum, chnl, vel):
     return non, nof, bend, bend_reset, chnl_, client
 
 
-# def note(knum=60, onset=0, dur=1, chnl=1, vel=127):
-#     data = _get_note_data(knum, chnl, vel)
-#     return ("n",) + data + (onset, dur, {"knum":knum,"onset":onset,"dur":dur,"chnl":chnl,"vel":vel})
-
-# def chord(knums=(60, 64, 67), onset=0, dur=1, chnl=1, vel=127):
-#     return ["c"] + [note(kn, onset, dur, chnl, vel) for kn in knums]
-
-
-
-
 
 def init(): 
     """Opens output ports on each client. This should happen

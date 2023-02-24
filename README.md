@@ -12,7 +12,7 @@ This package is a work-in-progress and in active development. Your feedback is v
 >>> import cu
 
 # initialize the module
->>> cu.init()
+>>> cu.rt.init()
 
 # create a single note
 >>> c4 = cu.note(knum=60)

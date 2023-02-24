@@ -8,7 +8,7 @@ import midiutil
 
 
 
-def proc(events, path):
+def save(events, path):
     # find out number of tracks
     tracks = {"frei": 0, "voices": 0}
     for e in events:

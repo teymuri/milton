@@ -196,7 +196,7 @@ def _panic():
         time.sleep(0.05)
 
 
-async def proc(events, script):
+async def play(events, script):
     """Run the fun, processing the rtmidi calls and cleanup if called from within a script.
     If running from inside a script also dealloc the MIDI_OUT_CLIENT object.
     proc should be given one single

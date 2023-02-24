@@ -20,7 +20,7 @@ def proc(events, mid="", opt=False):
     else: # play now
         if opt:
             asyncio.run(rt.proc(events, _SCRIPT))
-            mid_path = input("Specify path to write\n")
+            mid_path = input("That's how u compose! Take it (specify path) or leave it...")
             if mid_path:
                 mu.proc(events, mid_path)
                 print(f"Wrote to {mid_path}")

@@ -87,3 +87,7 @@ def get_knum(nt):
 
 def get_dur(nt):
     return nt[-1]["dur"]
+
+def exp_growth(init, rate, periods):
+    """Returns an exponential curve."""
+    return [init * pow(rate, t) for t in range(periods)]

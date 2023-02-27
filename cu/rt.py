@@ -199,20 +199,20 @@ def _panic():
             time.sleep(0.05)
         time.sleep(0.05)
 
-def _add_note_task(nt):
-    note_task = []
-    # note on task
-    note_task.append(asyncio.create_task(
+def _add_note_task(nt: dict) -> list:
+    return [
+        # note on
+        asyncio.create_task(
         _send_non_bend(
-            nt["onset"], nt["non"], nt["bend"], nt["client"]
-        )))
-    # note off task
-    note_task.append(asyncio.create_task(
+            nt["onset"], nt["non"], nt["bend"], nt["client"])
+        ),
+        # note off
+        asyncio.create_task(
         _send_nof_bend_reset(
             nt["onset"], nt["dur"], nt["nof"],
-            nt["bend_reset"], nt["chnl"], nt["client"]
-        )))
-    return note_task
+            nt["bend_reset"], nt["chnl"], nt["client"])
+        )
+    ]
 
 
 

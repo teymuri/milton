@@ -159,7 +159,11 @@ def _get_note_data(knum, chnl, vel):
     client_id, chnl = _get_clientid_and_chnl(chnl)
     client = _client_registry[client_id]
     non, nof, bend, bend_reset, chnl_ = _get_msgs(knum, chnl, vel)
-    return non, nof, bend, bend_reset, chnl_, client
+    # return non, nof, bend, bend_reset, chnl_, client
+    return {
+        "non": non, "nof": nof, "bend": bend, "bend_reset": bend_reset,
+        "chnl": chnl_, "client": client
+    }
 
 
 
@@ -188,12 +192,28 @@ def close_ports():
 def _panic():
     print("\npanicking...")
     for client in _client_registry.values():
-        print(client, "panic")
+        print("turning off", client)
         for chnl in range(16):
             client.send_message([CONTROL_CHANGE | chnl, ALL_SOUND_OFF, 0])
             client.send_message([CONTROL_CHANGE | chnl, RESET_ALL_CONTROLLERS, 0])
             time.sleep(0.05)
         time.sleep(0.05)
+
+def _add_note_task(nt):
+    note_task = []
+    # note on task
+    note_task.append(asyncio.create_task(
+        _send_non_bend(
+            nt["onset"], nt["non"], nt["bend"], nt["client"]
+        )))
+    # note off task
+    note_task.append(asyncio.create_task(
+        _send_nof_bend_reset(
+            nt["onset"], nt["dur"], nt["nof"],
+            nt["bend_reset"], nt["chnl"], nt["client"]
+        )))
+    return note_task
+
 
 
 async def play(events, script):
@@ -202,48 +222,25 @@ async def play(events, script):
     proc should be given one single
     fun which is your whole composition, don't call it multiple times
     via iteration etc."""
+    tasks = []
     try:
-        ts=[]
-        for event in events:
-            if event[0] == 'n':
-                non,nof,bend,bend_r,c,cl,os,d,_=event[1:] # eine note
-                ts.append(asyncio.create_task(
-                    _send_non_bend(os,non,bend,cl)
-                ))
-                ts.append(asyncio.create_task(
-                    _send_nof_bend_reset(os,d,nof,bend_r,c,cl)
-                ))
-            elif event[0] == 'c':
-                for x in event[1:]: # ist ein akkord oder voice?
-                    non,nof,bend,bend_r,c,cl,os,d,_=x[1:]
-                    ts.append(asyncio.create_task(
-                        _send_non_bend(os,non,bend,cl)
-                    ))
-                    ts.append(asyncio.create_task(
-                        _send_nof_bend_reset(os,d,nof,bend_r,c,cl)
-                    ))
-            else: # voice
-                for x in event:
-                    if x[0] == 'n':
-                        non,nof,bend,bend_r,c,cl,os,d,_=x[1:] # eine note
-                        ts.append(asyncio.create_task(
-                            _send_non_bend(os,non,bend,cl)
-                        ))
-                        ts.append(asyncio.create_task(
-                            _send_nof_bend_reset(os,d,nof,bend_r,c,cl)
-                        ))
-                    elif x[0] == 'c': # chord in voice
-                        for y in x[1:]:
-                            non,nof,bend,bend_r,c,cl,os,d,_=y[1:] # note?
-                            ts.append(asyncio.create_task(
-                                _send_non_bend(os,non,bend,cl)
-                            ))
-                            ts.append(asyncio.create_task(
-                                _send_nof_bend_reset(os,d,nof,bend_r,c,cl)
-                            ))
+        for ev in events:
+            try:
+                if ev["type"] == "note":
+                    tasks.extend(_add_note_task(ev))
+                elif ev["type"] == "chord":
+                    for nt in ev["notes"]:
+                        tasks.extend(_add_note_task(nt))
+            except TypeError: # ev must be a list/tuple
+                for x in ev: 
+                    if x["type"] == "note":
+                        tasks.extend(_add_note_task(x))
+                    elif x["type"] == "chord":
+                        for nt in x["notes"]:
+                            tasks.extend(_add_note_task(nt))
                     else:
                         raise ValueError(f"can't proc {x}")
-        await asyncio.gather(*ts)
+        await asyncio.gather(*tasks)
     except (EOFError, KeyboardInterrupt, asyncio.CancelledError):
         _panic()
     except (cu.err.CUZeroHzErr):

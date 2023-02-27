@@ -7,10 +7,16 @@ from cu.rt import _get_note_data
 
 
 def note(knum=60, onset=0, dur=1, chnl=1, vel=127):
-    return ("n",) + _get_note_data(knum, chnl, vel) + (onset, dur, {"knum":knum,"onset":onset,"dur":dur,"chnl":chnl,"vel":vel})
+    data = {"type": "note"}
+    data.update({"knum":knum,"onset":onset,"dur":dur,"vel":vel})
+    data.update(_get_note_data(knum, chnl, vel))
+    return data
 
 def chord(knums=(60, 64, 67), onset=0, dur=1, chnl=1, vel=127):
-    return ["c"] + [note(kn, onset, dur, chnl, vel) for kn in knums]
+    data = {"type": "chord"}
+    data.update({"knums":knums, "onset":onset, "dur":dur,"vel":vel})
+    data.update({"notes":[note(kn, onset, dur, chnl, vel) for kn in knums]})
+    return data
 
 def pret(x):
     """Prints and returns the thing, good for debuging."""

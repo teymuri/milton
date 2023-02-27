@@ -25,26 +25,25 @@ def save(events, path):
         file_obj.addTempo(i, 0, 60)
     vidx=0
     for e in events:
-        if e[0] == "n":
-            non,nof,bend,bend_r,c,cl,os,d,_=e[1:] # eine note
-            file_obj.addNote(0, c, non[1], os, d, non[2])
-        elif e[0] == "c": # chord
-            for x in e[1:]: # ist ein akkord oder voice?
-                non,nof,bend,bend_r,c,cl,os,d,_=x[1:]
-                file_obj.addNote(0, c, non[1], os, d, non[2])
-        else: # voice
+        try:
+            if e["type"] == "note":
+                file_obj.addNote(0, e["chnl"], e["non"][1],
+                                 e["onset"], e["dur"], e["non"][2])
+            elif e["type"] == "chord":
+                for x in e["notes"]: # ist ein akkord oder voice?
+                    file_obj.addNote(0, x["chnl"], x["non"][1],
+                                     x["onset"], x["dur"], x["non"][2])
+        except TypeError:
             for x in e:
-                if x[0] == "n":
-                    non,nof,bend,bend_r,c,cl,os,d,_=x[1:] # eine note
-                    file_obj.addNote(vidx, c, non[1], os, d, non[2])
-                    # try:
-                    #     file_obj.addNote(0, c, non[1], os, d, non[2])
-                    # except IndexError:
-                    #     breakpoint()
-                elif x[0] == "c":
-                    for y in x[1:]:
-                        non,nof,bend,bend_r,c,cl,os,d,_=y[1:] # note?
-                        file_obj.addNote(vidx, c, non[1], os, d, non[2])
+                if x["type"] == "note":
+                    file_obj.addNote(vidx, x["chnl"], x["non"][1],
+                                     x["onset"], x["dur"], x["non"][2],
+                                    )
+                elif x["type"] == "chord":
+                    for y in x["notes"]:
+                        file_obj.addNote(vidx,x["chnl"], x["non"][1],
+                                     x["onset"], x["dur"], x["non"][2]
+                                        )
                 else:
                     raise ValueError("Wieeeeee?")
             vidx+=1

@@ -175,7 +175,7 @@ def init():
     _tmp_client = rtmidi.MidiOut(rtapi=api)
     _AVAILABLE_PORTS = [p.lower() for p in _tmp_client.get_ports()]
     # hopefuly ports are listed in right order by get_ports!!!
-    _SYNTH_PORT_IDXS = [i for i, p in enumerate(_AVAILABLE_PORTS) if cu.cfg.synth_id.lower() in p]
+    _SYNTH_PORT_IDXS = [i for i, p in enumerate(_AVAILABLE_PORTS) if cu.cfg.synth.lower() in p]
     _tmp_client.delete()
     for i in range(cu.cfg.port_count):
         # create a new output client and register it

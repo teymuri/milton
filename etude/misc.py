@@ -16,15 +16,6 @@ def test():
         )
     )
 
-def piccolo():
-    viertel = 6/5
-    notes = list(range(36, 75, 2)) + list(range(72, 35, -2))
-    up = list(range(36, 75, 2))
-    down = reversed(up)
-    d = viertel / 2 / len(up)
-    for p in cycle(up):
-        print(p)
-        play_note(p, d, vel=50)
 # Note names
 G3 = 55
 C4 = 60
@@ -34,24 +25,21 @@ F4 = 65
 G4 = 67
 
 MAJ4 = [0, 3, 7, 12]
-open_ports()
+from cu import cfg
+cfg.synth_id = "ZynAddSubFX"
+print(cfg.synth_id)
+rt.init()
 def trem():
     ts =[]
     chs = [[30+i+j for i in MAJ4] for j in range(10)]
     x=0
-    j=0
     for i in range(1000):
-        j=x%10
         d = i * (x % 10)* .01
         # dd = 0.5 - i * .1
-        ts.append(note(60, onset=d,dur=.01, vel=100, chnl=3))
+        # ts.append(note(60, onset=d,dur=.01, vel=100, chnl=3))
         x+= 1
-        # for x in range(10):
-        #
-            # print(dd)
-            # play_note(40, dur=d, vel=100)
-        # for ch in chs:
-            # play_chord(ch, dur=d, vel=100, ch=1)
+        for ch in chs:
+            ts.append(chord([48,52, 55, 60], onset=d, dur=.1, vel=10, chnl=1))
     return ts
 
 proc(

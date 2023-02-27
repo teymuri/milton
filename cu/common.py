@@ -37,17 +37,19 @@ def get_intervals(ns):
     return [b - a for a, b in zip(ns[:-1], ns[1:])]
 
 
-def durs_to_onsets(durs, offset=0):
+def dur_to_onset(durs, offset=0):
     """Returns a list of (accumulated onset, corresponding duration).
     Offset is the desired starting onset."""
-    if isinstance(durs, tuple):
-        durs = list(durs) # convert to pop
+    durs = list(durs) # convert to pop
     onsets = []
     while durs:
         d = durs.pop(0)
-        onsets.append((offset, d))
+        onsets.append((d, offset))
         offset += d
     return onsets
+
+def onset_to_dur(onsets):
+    return [b - a for b, a in zip(onsets[1:], onsets[:-1])]
 
 def scale_to_sum(nums, _sum):
     """Scales a set of numbers such that they sum up 

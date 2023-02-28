@@ -1,7 +1,7 @@
 import __main__
 import asyncio
-import cu.rt
-import cu.mu
+import computil.rt
+import computil.mu
 from .common import *
 
 

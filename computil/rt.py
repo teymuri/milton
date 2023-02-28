@@ -2,8 +2,8 @@ import time
 import asyncio
 import rtmidi
 import rtmidi.midiutil
-import cu.cfg
-import cu.err
+import computil.cfg
+import computil.err
 from math import (modf, log2)
 from datetime import datetime, timedelta
 from contextlib import ExitStack
@@ -28,7 +28,7 @@ _chnls_usage = {
     # channel: [reference/usage, status]
     # status = is in use by a microtone (if usage > 0)
     # status False and reference>0 means in-use by equal tempered notes
-    chnl: [0, None] for chnl in range(cu.cfg.port_count * 16)
+    chnl: [0, None] for chnl in range(computil.cfg.port_count * 16)
 }
 # This is the client used on each processing, and
 # is set one per each proc call.
@@ -47,7 +47,7 @@ def _get_clientid_and_chnl(chnl):
 
 
 def _get_bend_msgs(knum, knum_ipart, ch):
-    bend_val = _NO_BEND_VAL + _NO_BEND_VAL * (12 / cu.cfg.bend_range) * log2(knum_to_hz(knum) / knum_to_hz(knum_ipart))
+    bend_val = _NO_BEND_VAL + _NO_BEND_VAL * (12 / computil.cfg.bend_range) * log2(knum_to_hz(knum) / knum_to_hz(knum_ipart))
     # note that crazy fractional parts could result in loss of information(because of rounding)
     bend_val = round(bend_val)
     bend_msg = (PITCH_BEND + ch, bend_val & 0x7f, (bend_val >> 7) & 0x7f)
@@ -170,14 +170,14 @@ def _get_note_data(knum, chnl, vel):
 def init(): 
     """Opens output ports on each client. This should happen
     before sending anything to the processor."""
-    api = _get_api(cu.cfg.api)
+    api = _get_api(computil.cfg.api)
     # save a list of available ports
     _tmp_client = rtmidi.MidiOut(rtapi=api)
     _AVAILABLE_PORTS = [p.lower() for p in _tmp_client.get_ports()]
     # hopefuly ports are listed in right order by get_ports!!!
-    _SYNTH_PORT_IDXS = [i for i, p in enumerate(_AVAILABLE_PORTS) if cu.cfg.synth.lower() in p]
+    _SYNTH_PORT_IDXS = [i for i, p in enumerate(_AVAILABLE_PORTS) if computil.cfg.synth.lower() in p]
     _tmp_client.delete()
-    for i in range(cu.cfg.port_count):
+    for i in range(computil.cfg.port_count):
         # create a new output client and register it
         client = rtmidi.MidiOut(name=f"computil output {i}", rtapi=api)
         client.open_port(_SYNTH_PORT_IDXS[i], f"client {i} port")
@@ -243,7 +243,7 @@ async def play(events, script):
         await asyncio.gather(*tasks)
     except (EOFError, KeyboardInterrupt, asyncio.CancelledError):
         _panic()
-    except (cu.err.CUZeroHzErr):
+    except (computil.err.CUZeroHzErr):
         print("can't convert 0 hz to midi knum")
     finally:
         if script: # done running python script.py, close and cleanup

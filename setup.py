@@ -1,12 +1,12 @@
 from setuptools import setup
 
 setup(
-	name='cu',
+	name='computil',
 	version='0.0.0',
 	description='Composition Utilities',
 	author='Amir Teymuri',
 	author_email='amiratwork22@gmail.com',
-	packages=['cu'],
-	install_requires=['python-rtmidi', 'MIDIUtil'],
+	packages=['computil'],
+	install_requires=['python-rtmidi', 'MIDIUtil', 'mido', 'numpy'],
 )
 

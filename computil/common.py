@@ -3,7 +3,7 @@ bunch of useful functions
 """
 
 from random import random
-from cu.rt import _get_note_data
+from computil.rt import _get_note_data
 
 
 def note(knum=60, onset=0, dur=1, chnl=1, vel=127):

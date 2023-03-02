@@ -190,9 +190,9 @@ def close_ports():
 
 
 def _panic():
-    print("\npanicking...")
+    print("\nPanic...")
     for client in _client_registry.values():
-        print("turning off", client)
+        print(f"Turning off client {client}")
         for chnl in range(16):
             client.send_message([CONTROL_CHANGE | chnl, ALL_SOUND_OFF, 0])
             client.send_message([CONTROL_CHANGE | chnl, RESET_ALL_CONTROLLERS, 0])

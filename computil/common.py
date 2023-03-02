@@ -174,56 +174,69 @@ def note_to_number(note: str, octave: int) -> int:
     return note
 ################### https://gist.github.com/devxpy/063968e0a2ef9b6db0bd6af8079dad2a
 
-_names_knums = dict()
+_NAMES_KNUMS = dict()
 
 for knum in range(21, 128):
     pset = knum % 12
     okt = knum // 12 - 1
     match pset:
         case 0:
-            _names_knums[f"c{okt}"] = knum
+            _NAMES_KNUMS[f"c{okt}"] = knum
         case 1:
-            _names_knums[f"c#{okt}"] = knum
-            _names_knums[f"db{okt}"] = knum
+            _NAMES_KNUMS[f"c#{okt}"] = knum
+            _NAMES_KNUMS[f"db{okt}"] = knum
         case 2:
-            _names_knums[f"d{okt}"] = knum
+            _NAMES_KNUMS[f"d{okt}"] = knum
         case 3:
-            _names_knums[f"d#{okt}"] = knum
-            _names_knums[f"eb{okt}"] = knum
+            _NAMES_KNUMS[f"d#{okt}"] = knum
+            _NAMES_KNUMS[f"eb{okt}"] = knum
         case 4:
-            _names_knums[f"e{okt}"] = knum
+            _NAMES_KNUMS[f"e{okt}"] = knum
         case 5:
-            _names_knums[f"f{okt}"] = knum
+            _NAMES_KNUMS[f"f{okt}"] = knum
         case 6:
-            _names_knums[f"f#{okt}"] = knum
-            _names_knums[f"gb{okt}"] = knum
+            _NAMES_KNUMS[f"f#{okt}"] = knum
+            _NAMES_KNUMS[f"gb{okt}"] = knum
         case 7:
-            _names_knums[f"g{okt}"] = knum
+            _NAMES_KNUMS[f"g{okt}"] = knum
         case 8:
-            _names_knums[f"g#{okt}"] = knum
-            _names_knums[f"ab{okt}"] = knum
+            _NAMES_KNUMS[f"g#{okt}"] = knum
+            _NAMES_KNUMS[f"ab{okt}"] = knum
         case 9:
-            _names_knums[f"a{okt}"] = knum
+            _NAMES_KNUMS[f"a{okt}"] = knum
         case 10:
-            _names_knums[f"a#{okt}"] = knum
-            _names_knums[f"bb{okt}"] = knum
+            _NAMES_KNUMS[f"a#{okt}"] = knum
+            _NAMES_KNUMS[f"bb{okt}"] = knum
         case 11:
-            _names_knums[f"b{okt}"] = knum
+            _NAMES_KNUMS[f"b{okt}"] = knum
+
+_KNUMS_NAMES = {kn: nm for nm, kn in _NAMES_KNUMS.items()}
 
 def name_to_knum(name):
-    return _names_knums[name]
+    return _NAMES_KNUMS[name]
 
-def note(knum=60, onset=0, dur=1, chnl=1, vel=127):
+def knum_to_name(knum):
+    return _KNUMS_NAMES[knum]
+
+def note(pitch=60, onset=0, dur=1, chnl=1, vel=127):
     data = {"type": "note"}
-    data.update({"knum":knum,"onset":onset,"dur":dur,"vel":vel})
+    if isinstance(pitch, str):
+        knum = name_to_knum(pitch)
+    else:
+        knum = pitch
+    data.update({"pitch": pitch,
+                 "knum":knum,
+                 "onset":onset,
+                 "dur":dur,
+                 "vel":vel})
     data.update(_get_note_data(knum, chnl, vel))
     return data
 
 
-def chord(knums=(60, 64, 67), onset=0, dur=1, chnl=1, vel=127):
+def chord(pitches=(60, 64, 67), onset=0, dur=1, chnl=1, vel=127):
     data = {"type": "chord"}
-    data.update({"knums":knums, "onset":onset, "dur":dur,"vel":vel})
-    data.update({"notes":[note(kn, onset, dur, chnl, vel) for kn in knums]})
+    data.update({"pitches":pitches, "onset":onset, "dur":dur,"vel":vel})
+    data.update({"notes":[note(p, onset, dur, chnl, vel) for p in pitches]})
     return data
 
 def pret(x):
@@ -286,25 +299,43 @@ def ascprob(idx, seqlen):
     r = random()< minmax_norm(idx, 0, seqlen-1)
     return r
 
+def prob(x): return random() < x
+
 # def ascprob(idx, seqlen):
 #     return 0 <= random() < (idx + 1) / seqlen
 
 def get_onset(nt):
     """Returns note's onset time."""
-    return nt[-1]["onset"]
+    return nt["onset"]
 
-def get_chnl(nt):
-    return nt[-1]["chnl"]
+def get_chnl(nt): return nt["chnl"]
 
-def get_vel(nt):
-    return nt[-1]["vel"]
+def get_vel(nt): return nt["vel"]
 
-def get_knum(nt):
-    return nt[-1]["knum"]
+def get_knum(nt): return nt["knum"]
 
-def get_dur(nt):
-    return nt[-1]["dur"]
+def get_pitch(nt): return nt["pitch"]
+
+def get_dur(nt): return nt["dur"]
 
 def exp_growth(init, rate, periods):
     """Returns an exponential curve."""
     return [init * pow(rate, t) for t in range(periods)]
+
+def get_pc(knum):
+    """Returns the pitch class of the key number."""
+    return knum % 12
+
+def fit(knum, min, max):
+    """Returns the knum transposed to be fitted into the
+    boundary of min-max."""
+    if min <= knum <= max:
+        return knum
+    else:
+        pc = get_pc(knum)
+        m = min
+        while m < max:
+            if get_pc(m) == pc:
+                return m
+            m += 1
+        raise ValueError(f"Can't fit {knum} into {min}, {max}")

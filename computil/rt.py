@@ -40,7 +40,7 @@ _SEMITONE_BEND_RANGE = 4096
 
 
 def _get_clientid_and_chnl(chnl):
-    chnl -= 1
+    chnl -= 1 # same channel for all clients
     client_id = chnl // 16
     client_chnl = chnl % 16
     return client_id, client_chnl
@@ -134,37 +134,42 @@ def _get_msgs(knum, midi_chnl, vel) -> tuple:
 
 
 
-async def _send_non_bend(t, non, bend, client):
+async def _send_non_bend(t, non, bend, clients):
     await asyncio.sleep(t)
-    if bend:
-        client.send_message(bend)
-    client.send_message(non)
+    for client in clients:
+        if bend:
+            client.send_message(bend)
+        client.send_message(non)
 
-async def _send_nof_bend_reset(t,dur,nof, bend_reset, chnl_, client):
+async def _send_nof_bend_reset(t,dur,nof, bend_reset, chnl_, clients):
     global _chnls_usage
     await asyncio.sleep(t+dur)
-    client.send_message(nof)
-    if bend_reset:
-        _chnls_usage[chnl_][0] -= 1
-        assert _chnls_usage[chnl_][0] == 0
-        _chnls_usage[chnl_][1] = None
-        client.send_message(bend_reset)
-    else:
-        _chnls_usage[chnl_][0] -= 1
-        if _chnls_usage[chnl_][0] == 0:
+    for client in clients:
+        client.send_message(nof)
+        if bend_reset:
+            _chnls_usage[chnl_][0] -= 1
+            assert _chnls_usage[chnl_][0] == 0
             _chnls_usage[chnl_][1] = None
+            client.send_message(bend_reset)
+        else:
+            _chnls_usage[chnl_][0] -= 1
+            if _chnls_usage[chnl_][0] == 0:
+                _chnls_usage[chnl_][1] = None
 
 
 def _get_note_data(knum, chnl, vel):
+    # get clients
     client_id, chnl = _get_clientid_and_chnl(chnl)
-    client = _client_registry[client_id]
+    # client = _client_registry[client_id]
+    clients = []
+    for synth in computil.cfg.synths:
+        clients.append(_client_registry[synth][client_id])
     non, nof, bend, bend_reset, chnl_ = _get_msgs(knum, chnl, vel)
     # return non, nof, bend, bend_reset, chnl_, client
     return {
         "non": non, "nof": nof, "bend": bend, "bend_reset": bend_reset,
-        "chnl": chnl_, "client": client
+        "chnl": chnl_, "clients": clients
     }
-
 
 
 def init(): 
@@ -172,45 +177,49 @@ def init():
     before sending anything to the processor."""
     api = _get_api(computil.cfg.api)
     # save a list of available ports
-    _tmp_client = rtmidi.MidiOut(rtapi=api)
-    _AVAILABLE_PORTS = [p.lower() for p in _tmp_client.get_ports()]
-    # hopefuly ports are listed in right order by get_ports!!!
-    _SYNTH_PORT_IDXS = [i for i, p in enumerate(_AVAILABLE_PORTS) if computil.cfg.synth.lower() in p]
-    _tmp_client.delete()
-    for i in range(computil.cfg.port_count):
-        # create a new output client and register it
-        client = rtmidi.MidiOut(name=f"computil output {i}", rtapi=api)
-        client.open_port(_SYNTH_PORT_IDXS[i], f"client {i} port")
-        _client_registry[i] = client
+    tmp_client = rtmidi.MidiOut(rtapi=api)
+    _AVAILABLE_PORTS = [p.lower() for p in tmp_client.get_ports()]
+    tmp_client.delete()
+    for synth in computil.cfg.synths:
+        _client_registry[synth] = dict()
+        # hopefuly ports are listed in right order by get_ports!!!
+        _SYNTH_PORT_IDXS = [i for i, p in enumerate(_AVAILABLE_PORTS) if synth.lower() in p]
+        for i in range(computil.cfg.port_count):
+            # create a new output client and register it
+            client = rtmidi.MidiOut(name=f"Computil Client {synth}", rtapi=api)
+            client.open_port(_SYNTH_PORT_IDXS[i], f"Output Port")
+            _client_registry[synth][i] = client
 
 def close_ports():
-    for client in _client_registry.values():
-        client.close_port()
-        client.delete()
+    for synthXXX in _client_registry.values():
+        for client in synthXXX.values():
+            client.close_port()
+            client.delete()
 
 
 def _panic():
     print("\nPanic...")
-    for client in _client_registry.values():
-        print(f"Turning off client {client}")
-        for chnl in range(16):
-            client.send_message([CONTROL_CHANGE | chnl, ALL_SOUND_OFF, 0])
-            client.send_message([CONTROL_CHANGE | chnl, RESET_ALL_CONTROLLERS, 0])
+    for synthXXX in _client_registry.values():
+        for client in synthXXX.values():
+            print(f"Turning off client {client}")
+            for chnl in range(16):
+                client.send_message([CONTROL_CHANGE | chnl, ALL_SOUND_OFF, 0])
+                client.send_message([CONTROL_CHANGE | chnl, RESET_ALL_CONTROLLERS, 0])
+                time.sleep(0.05)
             time.sleep(0.05)
-        time.sleep(0.05)
 
 def _add_note_task(nt: dict) -> list:
     return [
         # note on
         asyncio.create_task(
         _send_non_bend(
-            nt["onset"], nt["non"], nt["bend"], nt["client"])
+            nt["onset"], nt["non"], nt["bend"], nt["clients"])
         ),
         # note off
         asyncio.create_task(
         _send_nof_bend_reset(
             nt["onset"], nt["dur"], nt["nof"],
-            nt["bend_reset"], nt["chnl"], nt["client"])
+            nt["bend_reset"], nt["chnl"], nt["clients"])
         )
     ]
 

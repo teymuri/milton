@@ -2,7 +2,7 @@
 bunch of useful functions
 """
 
-from random import random
+from random import (choice, random)
 from computil.rt import _get_note_data
 
 INSTRUMENTS = [
@@ -326,16 +326,13 @@ def get_pc(knum):
     """Returns the pitch class of the key number."""
     return knum % 12
 
-def fit(knum, min, max):
+def fit(knum, min, max, mode=0):
     """Returns the knum transposed to be fitted into the
     boundary of min-max."""
     if min <= knum <= max:
         return knum
     else:
         pc = get_pc(knum)
-        m = min
-        while m < max:
-            if get_pc(m) == pc:
-                return m
-            m += 1
-        raise ValueError(f"Can't fit {knum} into {min}, {max}")
+        pcs = [(get_pc(kn), kn) for kn in range(min, max+1)]
+        if mode == 0: # somewhere from middle (random)
+            return choice([pckn for pckn in pcs if pckn[0] == pc])[1]

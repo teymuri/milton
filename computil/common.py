@@ -318,8 +318,8 @@ def get_pitch(nt): return nt["pitch"]
 
 def get_dur(nt): return nt["dur"]
 
-def exp_growth(init, rate, periods):
-    """Returns an exponential curve."""
+def geom(init, rate, periods):
+    """Returns a geometric series."""
     return [init * pow(rate, t) for t in range(periods)]
 
 def get_pc(knum):

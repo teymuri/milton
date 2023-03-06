@@ -13,7 +13,7 @@ def save(events, path):
     tracks = {"frei": 0, "voices": 0}
     for e in events:
         try:
-            if e[0] in "nc":
+            if e["type"] == "note" or e["type"] == "chord":
                 # frei rumliegende Noten/Akkorde gehen inselben Track
                 if tracks["frei"] == 0:
                     tracks["frei"] = 1

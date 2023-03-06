@@ -3,6 +3,7 @@ bunch of useful functions
 """
 
 from random import (choice, random)
+from itertools import (groupby)
 from computil.rt import _get_note_data
 
 INSTRUMENTS = [
@@ -336,3 +337,33 @@ def fit(knum, min, max, mode=0):
         pcs = [(get_pc(kn), kn) for kn in range(min, max+1)]
         if mode == 0: # somewhere from middle (random)
             return choice([pckn for pckn in pcs if pckn[0] == pc])[1]
+
+
+
+def _concat_vcs(vcs):
+    vcs = list(vcs)
+    cat = vcs.pop(0)
+    while vcs:
+        vc = vcs.pop(0)
+        while vc:
+            cat.append(vc.pop(0))
+    return cat
+
+def _group_by_onset(vcs):
+    return [list(g) for _,g in groupby(sorted(vcs, key=get_onset), key=get_onset)]
+
+
+def mix(vcs):
+    """Returns a single voice which is a mixture of all voices."""
+    mixed = []
+    for g in _group_by_onset(_concat_vcs(vcs)):
+        if len(g) > 1: # then make a chord out of it
+            long_nt = max(g, key=get_dur) # group's longest note
+            for nt in g:
+                nt["dur"] = get_dur(long_nt)
+                nt["vel"] = get_vel(long_nt)
+                nt["chnl"] = get_chnl(long_nt)
+            mixed.append(g)
+        else:
+            mixed.append(g[0])
+    return mixed

@@ -364,7 +364,7 @@ def _pitch_mixture(items):
     # the notes are listed?!!
     return sorted(set(ps))
 
-def mix(vcs):
+def mix(*vcs):
     """Returns a single voice which is a mixture of all voices."""
     mixed = []
     for g in _group_by_onset(_concat_vcs(vcs)):

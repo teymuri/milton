@@ -305,9 +305,7 @@ def prob(x): return random() < x
 # def ascprob(idx, seqlen):
 #     return 0 <= random() < (idx + 1) / seqlen
 
-def get_onset(nt):
-    """Returns note's onset time."""
-    return nt["onset"]
+def get_onset(nt): return nt["onset"]
 
 def get_chnl(nt): return nt["chnl"]
 
@@ -316,14 +314,15 @@ def get_vel(nt): return nt["vel"]
 def get_knum(nt): return nt["knum"]
 
 def get_pitch(nt): return nt["pitch"]
-
+def get_pitches(chd): return chd["pitches"]
 def get_dur(nt): return nt["dur"]
+def get_type(x): return x["type"]
 
 def geom(init, rate, periods):
     """Returns a geometric series."""
     return [init * pow(rate, t) for t in range(periods)]
 
-def get_pc(knum):
+def aspc(knum):
     """Returns the pitch class of the key number."""
     return knum % 12
 
@@ -352,18 +351,33 @@ def _concat_vcs(vcs):
 def _group_by_onset(vcs):
     return [list(g) for _,g in groupby(sorted(vcs, key=get_onset), key=get_onset)]
 
+def _pitch_mixture(items):
+    ps = []
+    for item in items:
+        if get_type(item) == "note":
+            ps.append(get_pitch(item))
+        elif get_type(item) == "chord":
+            ps.extend(get_pitches(item))
+        else:
+            raise TypeError
+    # Does it make any difference in which order 
+    # the notes are listed?!!
+    return sorted(set(ps))
 
 def mix(vcs):
     """Returns a single voice which is a mixture of all voices."""
     mixed = []
     for g in _group_by_onset(_concat_vcs(vcs)):
         if len(g) > 1: # then make a chord out of it
-            long_nt = max(g, key=get_dur) # group's longest note
-            for nt in g:
-                nt["dur"] = get_dur(long_nt)
-                nt["vel"] = get_vel(long_nt)
-                nt["chnl"] = get_chnl(long_nt)
-            mixed.append(g)
+            longest = max(g, key=get_dur) # group's longest event
+            mixed.append(chord(
+                pitches=_pitch_mixture(g),
+                onset=get_onset(longest),
+                dur=get_dur(longest),
+                chnl=get_chnl(longest)+1,
+                vel=get_vel(longest)
+                )
+            )
         else:
             mixed.append(g[0])
     return mixed

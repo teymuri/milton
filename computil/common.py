@@ -236,14 +236,20 @@ def note(pitch=60, onset=0, dur=1, chnl=1, vel=127):
 
 def chord(pitches=(60, 64, 67), onset=0, dur=1, chnl=1, vel=127):
     data = {"type": "chord"}
-    data.update({"pitches":pitches, "onset":onset, "dur":dur,"vel":vel})
-    data.update({"notes":[note(p, onset, dur, chnl, vel) for p in pitches]})
+    data.update({
+        "pitches":pitches,
+        "onset":onset,
+        "dur":dur,
+        "vel":vel,
+        "notes": [note(p, onset, dur, chnl, vel) for p in pitches]
+        })
     return data
 
-def pret(x):
+def pret(*xs):
     """Prints and returns the thing, good for debuging."""
-    print(x)
-    return x
+    for x in xs:
+        print(x)
+    return xs[-1]
 
 def bpm_to_sec(bpm):
     """Returns the duration of one beat in tempo bpm."""
@@ -252,6 +258,11 @@ def bpm_to_sec(bpm):
 def rhy_to_sec(rhy, tempo):
     """"""
     return rhy * 4.0 * bpm_to_sec(tempo)
+
+def sec_to_bpm(sec):
+    """A unit (prob. quarter note) of sec duration is equal to 
+    which metronome number?"""
+    return 60 / sec
 
 def knum_to_hz(knum):
     return 440 * 2 ** ((knum - 69) / 12.)
@@ -305,18 +316,19 @@ def prob(x): return random() < x
 # def ascprob(idx, seqlen):
 #     return 0 <= random() < (idx + 1) / seqlen
 
-def get_onset(nt): return nt["onset"]
+def get_onset(x): return x["onset"]
 
-def get_chnl(nt): return nt["chnl"]
+def get_chnl(x): return x["chnl"]
 
-def get_vel(nt): return nt["vel"]
+def get_vel(x): return x["vel"]
 
 def get_knum(nt): return nt["knum"]
 
 def get_pitch(nt): return nt["pitch"]
 def get_pitches(chd): return chd["pitches"]
 def get_dur(nt): return nt["dur"]
-def get_type(x): return x["type"]
+def is_note(x): return x["type"] == "note"
+def is_chord(x): return x["type"] == "chord"
 
 def geom(init, rate, periods):
     """Returns a geometric series."""
@@ -332,21 +344,13 @@ def fit(knum, min, max, mode=0):
     if min <= knum <= max:
         return knum
     else:
-        pc = get_pc(knum)
-        pcs = [(get_pc(kn), kn) for kn in range(min, max+1)]
+        pc = aspc(knum)
+        pcs = [(aspc(kn), kn) for kn in range(min, max+1)]
         if mode == 0: # somewhere from middle (random)
             return choice([pckn for pckn in pcs if pckn[0] == pc])[1]
 
 
 
-def _concat_vcs(vcs):
-    vcs = list(vcs)
-    cat = vcs.pop(0)
-    while vcs:
-        vc = vcs.pop(0)
-        while vc:
-            cat.append(vc.pop(0))
-    return cat
 
 def _group_by_onset(vcs):
     return [list(g) for _,g in groupby(sorted(vcs, key=get_onset), key=get_onset)]
@@ -354,9 +358,9 @@ def _group_by_onset(vcs):
 def _pitch_mixture(items):
     ps = []
     for item in items:
-        if get_type(item) == "note":
+        if is_note(item):
             ps.append(get_pitch(item))
-        elif get_type(item) == "chord":
+        elif is_chord(item):
             ps.extend(get_pitches(item))
         else:
             raise TypeError
@@ -364,20 +368,42 @@ def _pitch_mixture(items):
     # the notes are listed?!!
     return sorted(set(ps))
 
-def mix(*vcs):
-    """Returns a single voice which is a mixture of all voices."""
+def _str_grp_items(grp):
+    sort_grp = sorted(grp, key=get_dur)
+    dur_cps = [get_dur(x) for x in sort_grp]
+    _str = [sort_grp.pop(0)]
+    i = 1
+    while sort_grp:
+        item = sort_grp.pop(0).copy()
+        last_item = _str[-1]
+        item["onset"] = get_onset(last_item) + get_dur(last_item)
+        item["dur"] = dur_cps[i] - dur_cps[i-1] # dur of item is bigger than dur of last item
+        _str.append(item)
+        i += 1
+    return _str
+
+
+
+def mix(vcs, oscoll="mix"):
+    """Returns a single voice which is a mixture of all voices.
+    Collision arg decides what to do if multiple notes/chords
+    overlap, i.e. have the same onset (default is mix: mixing 
+    them to build a single chord. Other args can be...)"""
     mixed = []
-    for g in _group_by_onset(_concat_vcs(vcs)):
-        if len(g) > 1: # then make a chord out of it
-            longest = max(g, key=get_dur) # group's longest event
-            mixed.append(chord(
-                pitches=_pitch_mixture(g),
-                onset=get_onset(longest),
-                dur=get_dur(longest),
-                chnl=get_chnl(longest)+1,
-                vel=get_vel(longest)
+    concat_vcs = [itm for vc in vcs for itm in vc]
+    for g in _group_by_onset(concat_vcs):
+        if len(g) > 1:
+            if oscoll == "mix":
+                longest = max(g, key=get_dur) # group's longest event
+                mixed.append(chord(
+                    pitches=_pitch_mixture(g),
+                    onset=get_onset(longest),
+                    dur=get_dur(longest),
+                    chnl=get_chnl(longest)+1 if is_note(longest) else get_chnl(longest["notes"][0])+1, # what about
+                    # microtonal???!!!
+                    vel=get_vel(longest)
+                    )
                 )
-            )
         else:
             mixed.append(g[0])
     return mixed

@@ -41,8 +41,8 @@ def save(events, path):
                                     )
                 elif x["type"] == "chord":
                     for y in x["notes"]:
-                        file_obj.addNote(vidx,x["chnl"], x["non"][1],
-                                     x["onset"], x["dur"], x["non"][2]
+                        file_obj.addNote(vidx,y["chnl"], y["non"][1],
+                                     y["onset"], y["dur"], y["non"][2]
                                         )
                 else:
                     raise ValueError("Wieeeeee?")

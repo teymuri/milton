@@ -17,12 +17,13 @@ def proc(events, mid="", opt=False):
     Set opt to True to listen first and decide to write to the disk or not afterwards."""
     if mid: # write to a midi file
         mu.save(events, mid)
+        print(f"Saved at {mid}")
     else: # play now
         if opt:
             asyncio.run(rt.play(events, _SCRIPT))
-            mid_path = input("That's how u compose! Take it (specify path) or leave it...\n")
+            mid_path = input("That's how u compose! Take it (spec file name without suffix) or leave it...\n")
             if mid_path:
-                mu.save(events, mid_path)
-                print(f"Wrote to {mid_path}")
+                mu.save(events, mid_path + ".mid")
+                print(f"Wrote to {mid_path}.mid")
         else:
             asyncio.run(rt.play(events, _SCRIPT))

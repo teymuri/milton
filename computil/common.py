@@ -308,8 +308,7 @@ def minmax_norm(x, minx, maxx, low_bound=0, up_bound=1):
     return low_bound + ((x - minx) * rescale_rng) / (maxx - minx) 
 
 def ascprob(idx, seqlen):
-    r = random()< minmax_norm(idx, 0, seqlen-1)
-    return r
+    return random() < minmax_norm(idx, 0, seqlen-1)
 
 def prob(x): return random() < x
 

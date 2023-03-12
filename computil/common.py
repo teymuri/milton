@@ -229,7 +229,8 @@ def note(pitch=60, onset=0, dur=1, chnl=1, vel=127):
                  "knum":knum,
                  "onset":onset,
                  "dur":dur,
-                 "vel":vel})
+                 "vel":vel,
+                })
     data.update(_get_note_data(knum, chnl, vel))
     return data
 
@@ -241,7 +242,7 @@ def chord(pitches=(60, 64, 67), onset=0, dur=1, chnl=1, vel=127):
         "onset":onset,
         "dur":dur,
         "vel":vel,
-        "notes": [note(p, onset, dur, chnl, vel) for p in pitches]
+        "notes": [note(p, onset, dur, chnl, vel) for p in pitches],
         })
     return data
 

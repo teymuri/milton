@@ -338,6 +338,16 @@ def aspc(knum):
     """Returns the pitch class of the key number."""
     return knum % 12
 
+def clip(this, lo=0, hi=1):
+    """Returns this if lo <= this <= hi, otherwise return
+    the nearest boundary: lo if this < lo, hi if this > hi."""
+    if lo <= this <= hi:
+        return this
+    elif this < lo:
+        return lo
+    else: # this > hi
+        return hi
+
 def fit(knum, min, max, mode=0):
     """Returns the knum transposed to be fitted into the
     boundary of min-max."""

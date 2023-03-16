@@ -2,7 +2,7 @@ import __main__
 import asyncio
 import computil.rt
 import computil.mu
-from .common import *
+from .cu import *
 
 
 try:

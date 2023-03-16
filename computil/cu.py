@@ -1,5 +1,6 @@
 """
 bunch of useful functions
+This file comprises the public interface of computil.
 """
 
 from random import (choice, random)
@@ -177,7 +178,7 @@ def note_to_number(note: str, octave: int) -> int:
 
 _NAMES_KNUMS = dict()
 
-for knum in range(21, 128):
+for knum in range(128):
     pset = knum % 12
     okt = knum // 12 - 1
     match pset:
@@ -218,6 +219,10 @@ def name_to_knum(name):
 
 def knum_to_name(knum):
     return _KNUMS_NAMES[knum]
+
+# https://www.inspiredacoustics.com/en/MIDI_note_numbers_and_center_frequencies
+PNO_LO_KNUM, PNO_HI_KNUM = 21, 108
+PNO_LO_NAME, PNO_HI_NAME = knum_to_name(PNO_LO_KNUM), knum_to_name(PNO_HI_KNUM)
 
 def note(pitch=60, onset=0, dur=1, chnl=1, vel=127):
     data = {"type": "note"}

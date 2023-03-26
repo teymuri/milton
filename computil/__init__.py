@@ -1,9 +1,9 @@
 import __main__
 import asyncio
-import computil.rt
-import computil.mu
+import computil.curtmidi
+import computil.cumidiutil
 from datetime import datetime
-from .cu import *
+from .utils import *
 
 
 try:

@@ -30,7 +30,7 @@ def save(events, path):
                 file_obj.addNote(0, e["chnl"], e["non"][1],
                                  e["onset"], e["dur"], e["non"][2])
             elif e["type"] == "chord":
-                for x in e["notes"]: # ist ein akkord oder voice?
+                for x in e["notes"]:
                     file_obj.addNote(0, x["chnl"], x["non"][1],
                                      x["onset"], x["dur"], x["non"][2])
         except TypeError:
@@ -45,7 +45,7 @@ def save(events, path):
                                      y["onset"], y["dur"], y["non"][2]
                                         )
                 else:
-                    raise ValueError("Wieeeeee?")
+                    raise ValueError("Error aus cumidiutil.py")
             vidx+=1
     with open(path, "wb") as midfile:
         file_obj.writeFile(midfile)

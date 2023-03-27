@@ -1,6 +1,6 @@
 import __main__
 import asyncio
-import computil.curtmidi
+import computil.curtmidi as rt
 import computil.cumidiutil
 from datetime import datetime
 from .utils import *

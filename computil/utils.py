@@ -335,9 +335,13 @@ def get_dur(nt): return nt["dur"]
 def is_note(x): return x["type"] == "note"
 def is_chord(x): return x["type"] == "chord"
 
-def geomseq(init, rate, periods):
-    """Returns a geometric series."""
-    return [init * pow(rate, t) for t in range(periods)]
+def nth_geom_term(n, init, rate):
+    """Returns the nth term of a geometric sequence."""
+    return init * pow(rate, n - 1)
+
+def geom_seq(init, rate, count):
+    return [nth_geom_term(n, init, rate) for n in range(1, count + 1)]
+
 
 def aspc(knum):
     """Returns the pitch class of the key number."""

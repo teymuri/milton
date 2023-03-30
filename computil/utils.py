@@ -224,13 +224,13 @@ def knum_to_name(knum):
 PNO_LO_KNUM, PNO_HI_KNUM = 21, 108
 PNO_LO_NAME, PNO_HI_NAME = knum_to_name(PNO_LO_KNUM), knum_to_name(PNO_HI_KNUM)
 
-def note(pitch=60, onset=0, dur=1, chnl=1, vel=127):
+def note(pch=60, onset=0, dur=1, chnl=1, vel=127):
     data = {"type": "note"}
-    if isinstance(pitch, str):
-        knum = name_to_knum(pitch)
+    if isinstance(pch, str):
+        knum = name_to_knum(pch)
     else:
-        knum = pitch
-    data.update({"pitch": pitch,
+        knum = pch
+    data.update({"pch": pch,
                  "knum":knum,
                  "onset":onset,
                  "dur":dur,
@@ -240,14 +240,14 @@ def note(pitch=60, onset=0, dur=1, chnl=1, vel=127):
     return data
 
 
-def chord(pitches=(60, 64, 67), onset=0, dur=1, chnl=1, vel=127):
+def chord(pchs=(60, 64, 67), onset=0, dur=1, chnl=1, vel=127):
     data = {"type": "chord"}
     data.update({
-        "pitches":pitches,
+        "pchs":pchs,
         "onset":onset,
         "dur":dur,
         "vel":vel,
-        "notes": [note(p, onset, dur, chnl, vel) for p in pitches],
+        "notes": [note(p, onset, dur, chnl, vel) for p in pchs],
         })
     return data
 
@@ -335,7 +335,7 @@ def get_dur(nt): return nt["dur"]
 def is_note(x): return x["type"] == "note"
 def is_chord(x): return x["type"] == "chord"
 
-def geom(init, rate, periods):
+def geomseq(init, rate, periods):
     """Returns a geometric series."""
     return [init * pow(rate, t) for t in range(periods)]
 

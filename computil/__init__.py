@@ -1,6 +1,6 @@
 import __main__
 import asyncio
-import computil.curtmidi as rt
+import computil.curtmidi as rt # alias name
 import computil.cumidiutil
 from datetime import datetime
 from .utils import *
@@ -17,14 +17,14 @@ def proc(events, mid="", opt=False):
     """Processes every thing!
     Set opt to True to listen first and decide to write to the disk or not afterwards."""
     if mid: # write to a midi file
-        mu.save(events, mid)
+        cumidiutil.save(events, mid)
         print(f"Saved {mid} at {datetime.now()}")
     else: # play now
         if opt:
             asyncio.run(rt.play(events, _SCRIPT))
             mid_path = input("Spec path ( without suffix ) to save\n")
             if mid_path:
-                mu.save(events, mid_path + ".mid")
+                cumidiutil.save(events, mid_path + ".mid")
                 print(f"Wrote to {mid_path}.mid at {datetime.now()}")
         else:
             asyncio.run(rt.play(events, _SCRIPT))

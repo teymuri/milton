@@ -439,3 +439,16 @@ def break_num(n, max=1):
         ns.append(n if r > n else r)
         n -= r
     return ns
+
+
+def group_pattern(it, patt):
+    """Groups items of the iterable based on patterns in patt list."""
+    grp = []
+    while patt:
+        end = patt.pop(0)
+        if end > len(it):
+            raise IndexError(f"{end} > {len(it)}")
+        grp.append(it[0:end])
+        it = it[end:]
+    return grp
+

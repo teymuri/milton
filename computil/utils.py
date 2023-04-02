@@ -3,7 +3,7 @@ bunch of useful functions
 This file comprises the public interface of computil.
 """
 
-from random import (choice, random)
+from random import (choice, random, uniform, randint)
 from itertools import (groupby)
 from computil.curtmidi import _get_note_data
 
@@ -426,3 +426,16 @@ def mix(vcs, oscoll="mix"):
         else:
             mixed.append(g[0])
     return mixed
+
+def break_num(n, max=1):
+    """Breaks the number n into a list of smaller ints/floats"""
+    ns = []
+    if isinstance(n, float) or isinstance(max, float):
+        f = uniform
+    else:
+        f = randint
+    while n > 0:
+        r = f(1, max)
+        ns.append(n if r > n else r)
+        n -= r
+    return ns

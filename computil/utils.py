@@ -239,6 +239,12 @@ def note(pch=60, onset=0, dur=1, chnl=1, vel=127):
     data.update(_get_note_data(knum, chnl, vel))
     return data
 
+def clone_note(note):
+    # clients obj can't be copied with deepcopy hence...
+    # pch string????
+    new = {k: note[k] for k in set(note).difference(("clients",))}
+    new["clients"] = note["clients"] # client is same reference
+    return new
 
 def chord(pchs=(60, 64, 67), onset=0, dur=1, chnl=1, vel=127):
     data = {"type": "chord"}
@@ -427,28 +433,29 @@ def mix(vcs, oscoll="mix"):
             mixed.append(g[0])
     return mixed
 
-def break_num(n, max=1):
-    """Breaks the number n into a list of smaller ints/floats"""
+def break_num(n, hi=1):
+    """Breaks the number n into a list of smaller ints/floats.
+    hi is the highest possible number allowed to appear in the list."""
     ns = []
-    if isinstance(n, float) or isinstance(max, float):
+    if isinstance(n, float) or isinstance(hi, float):
         f = uniform
     else:
         f = randint
     while n > 0:
-        r = f(1, max)
+        r = f(1, hi)
         ns.append(n if r > n else r)
         n -= r
     return ns
 
 
-def group_pattern(it, patt):
+def group_patt(it, patt):
     """Groups items of the iterable based on patterns in patt list."""
     grp = []
-    while patt:
-        end = patt.pop(0)
-        if end > len(it):
-            raise IndexError(f"{end} > {len(it)}")
-        grp.append(it[0:end])
-        it = it[end:]
+    for end_idx in patt:
+        # end_idx = patt.pop(0)
+        if end_idx > len(it):
+            raise IndexError(f"can't make sublist of length {end_idx} from a list of length {len(it)}")
+        grp.append(it[0:end_idx])
+        it = it[end_idx:]
     return grp
 

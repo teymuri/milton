@@ -1,6 +1,5 @@
 """
-bunch of useful functions
-This file comprises the public interface of computil.
+This module comprises the public interface of computil.
 """
 
 from random import (choice, random, uniform, randint)
@@ -452,7 +451,6 @@ def group_patt(it, patt):
     """Groups items of the iterable based on patterns in patt list."""
     grp = []
     for end_idx in patt:
-        # end_idx = patt.pop(0)
         if end_idx > len(it):
             raise IndexError(f"can't make sublist of length {end_idx} from a list of length {len(it)}")
         grp.append(it[0:end_idx])

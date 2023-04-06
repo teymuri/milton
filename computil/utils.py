@@ -223,7 +223,7 @@ def knum_to_name(knum):
 PNO_LO_KNUM, PNO_HI_KNUM = 21, 108
 PNO_LO_NAME, PNO_HI_NAME = knum_to_name(PNO_LO_KNUM), knum_to_name(PNO_HI_KNUM)
 
-def note(pch=60, onset=0, dur=1, chnl=1, vel=127):
+def make_note(pch=60, onset=0, dur=1, chnl=1, vel=127):
     data = {"type": "note"}
     if isinstance(pch, str):
         knum = name_to_knum(pch)
@@ -238,21 +238,15 @@ def note(pch=60, onset=0, dur=1, chnl=1, vel=127):
     data.update(_get_note_data(knum, chnl, vel))
     return data
 
-def clone_note(note):
-    # clients obj can't be copied with deepcopy hence...
-    # pch string????
-    new = {k: note[k] for k in set(note).difference(("clients",))}
-    new["clients"] = note["clients"] # client is same reference
-    return new
 
-def chord(pchs=(60, 64, 67), onset=0, dur=1, chnl=1, vel=127):
+def make_chord(pchs=(60, 64, 67), onset=0, dur=1, chnl=1, vel=127):
     data = {"type": "chord"}
     data.update({
         "pchs":pchs,
         "onset":onset,
         "dur":dur,
         "vel":vel,
-        "notes": [note(p, onset, dur, chnl, vel) for p in pchs],
+        "notes": [make_note(p, onset, dur, chnl, vel) for p in pchs],
         })
     return data
 

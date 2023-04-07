@@ -434,8 +434,11 @@ def break_num(n, hi=1):
         f = uniform
     else:
         f = randint
+    if hi < 0:
+        # uniform will return negative floats when hi is negative
+        raise ValueError(f"highest allowed ingredient can't be negative, got {hi}")
     while n > 0:
-        r = f(1, hi)
+        r = f(0, hi)
         ns.append(n if r > n else r)
         n -= r
     return ns

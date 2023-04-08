@@ -439,8 +439,9 @@ def break_num(n, hi=1):
         raise ValueError(f"highest allowed ingredient can't be negative, got {hi}")
     while n > 0:
         r = f(0, hi)
-        ns.append(n if r > n else r)
-        n -= r
+        if r:
+            ns.append(n if r > n else r)
+            n -= r
     return ns
 
 

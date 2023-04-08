@@ -444,7 +444,7 @@ def break_num(n, hi=1):
     return ns
 
 
-def group_patt(it, patt):
+def group_by_patt(it, patt):
     """Groups items of the iterable based on patterns in patt list."""
     grp = []
     for end_idx in patt:

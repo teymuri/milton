@@ -4,7 +4,7 @@ This module comprises the public interface of computil.
 
 from random import (choice, random, uniform, randint, randrange)
 from itertools import (groupby)
-from computil.curtmidi import _get_note_data
+from computil.realtime import _get_note_data
 
 INSTRUMENTS = [
     'Acoustic Grand Piano',

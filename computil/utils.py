@@ -2,7 +2,7 @@
 This module comprises the public interface of computil.
 """
 
-from random import (choice, random, uniform, randint)
+from random import (choice, random, uniform, randint, randrange)
 from itertools import (groupby)
 from computil.curtmidi import _get_note_data
 
@@ -426,7 +426,7 @@ def mix(vcs, oscoll="mix"):
     return mixed
 
 def break_num(n, hi=1):
-    """Breaks the number n into a list of smaller ints/floats.
+    """Breaks the number into a list of smaller ints/floats ingredients.
     hi is the highest possible number allowed to appear in the list."""
     ns = []
     if isinstance(n, float) or isinstance(hi, float):
@@ -443,6 +443,16 @@ def break_num(n, hi=1):
             n -= r
     return ns
 
+def break_num2(num, count):
+    ingreds = [num / count for _ in range(count)]
+    while count:
+        i1 = randrange(len(ingreds))
+        i2 = (i1 + 1) % len(ingreds)
+        n = uniform(0, ingreds[i1])
+        ingreds[i1] -= n
+        ingreds[i2] += n
+        count -= 1
+    return ingreds
 
 def group_by_patt(it, patt):
     """Groups items of the iterable based on patterns in patt list."""

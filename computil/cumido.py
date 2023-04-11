@@ -19,7 +19,7 @@ def _parse_track(track, tpb, tscale):
                 ) * tscale
             non_msg_vars = vars(non_msg)
             data = {
-                "knum": non_msg_vars["note"],
+                "pch": non_msg_vars["note"],
                 "onset": onset,
                 "dur": dur,
                 "chnl": non_msg_vars["channel"] + 1,

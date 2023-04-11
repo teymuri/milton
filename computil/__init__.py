@@ -1,7 +1,8 @@
 import __main__
 import asyncio
-import computil.curtmidi as rt # alias name
-import computil.cumidiutil
+import computil.curtmidi as rt # realtime
+import computil.cumidiutil as wr # writer
+import computil.cumido as rd # reader
 from datetime import datetime
 from .utils import *
 

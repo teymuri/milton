@@ -293,7 +293,6 @@ def dur_to_onset(durs, initos=0):
     return onsets
 
 def onset_to_dur(onsets):
-    onsets = list(onsets)
     return [b - a for b, a in zip(onsets[1:], onsets[:-1])]
 
 def normsum(ns, _sum=1):

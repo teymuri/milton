@@ -12,7 +12,7 @@ This package is a *work-in-progress* and *in active development*. Your feedback 
 >>> import computil as cu
 
 # First initialize the module,
->>> cu.rt.init()
+>>> cu.realtime.init()
 
 # create a single note,
 >>> c4 = cu.make_note("c4")

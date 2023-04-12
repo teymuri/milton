@@ -3,6 +3,7 @@ This module comprises the public interface of computil.
 """
 
 from random import (choice, random, uniform, randint, randrange)
+from math import (modf, log)
 from itertools import (groupby)
 from computil.realtime import _get_note_data
 
@@ -464,3 +465,8 @@ def group_by_patt(it, patt):
         it = it[end_idx:]
     return grp
 
+def roundf_to(fnum, to=2):
+    """Rounds the float to the nearest exponent of to, e.g.
+    2.314 returns 2.25"""
+    f, i = modf(fnum)
+    return i + pow(to, round(log(f, to)))

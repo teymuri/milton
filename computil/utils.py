@@ -4,7 +4,7 @@ This module comprises the public interface of computil.
 
 from random import (choice, random, uniform, randint, randrange)
 from math import (modf, log)
-from itertools import (groupby)
+from itertools import (groupby, chain, islice)
 from computil.realtime import _get_note_data
 
 INSTRUMENTS = [
@@ -470,3 +470,12 @@ def roundf_to(fnum, to=2):
     2.314 returns 2.25"""
     f, i = modf(fnum)
     return i + pow(to, round(log(f, to)))
+
+# todo: use n%len(it) to rotate even if n>len(n)
+def nth_rotation(it, nth):
+    """Returns an iterable which is the nth rotation of it, e.g.
+    rotate([1,2,3,4], 2) => [3,4,1,2]"""
+    return chain(islice(it, nth, None), islice(it, 0, nth))
+
+def get_rotations(it, count):
+    return [nth_rotation(it, nth) for nth in range(count)]

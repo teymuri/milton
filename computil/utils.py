@@ -2,7 +2,8 @@
 This module comprises the public interface of computil.
 """
 
-from random import (choice, random, uniform, randint, randrange)
+# from random.random import (random.random.choice, random, random.uniform, random.randint, random.randrange)
+import random
 from math import (modf, log)
 from itertools import (groupby, chain, islice)
 from computil.realtime import _get_note_data
@@ -313,12 +314,12 @@ def minmax_norm(x, minx, maxx, low_bound=0, up_bound=1):
     return low_bound + ((x - minx) * rescale_rng) / (maxx - minx) 
 
 def ascprob(idx, seqlen):
-    return random() < minmax_norm(idx, 0, seqlen-1)
+    return random.random() < minmax_norm(idx, 0, seqlen-1)
 
-def prob(x): return random() < x
+def occured(prob): return random.random() < prob
 
 # def ascprob(idx, seqlen):
-#     return 0 <= random() < (idx + 1) / seqlen
+#     return 0 <= random.random() < (idx + 1) / seqlen
 
 def get_onset(x): return x["onset"]
 
@@ -364,8 +365,8 @@ def fit(knum, min, max, mode=0):
     else:
         pc = aspc(knum)
         pcs = [(aspc(kn), kn) for kn in range(min, max+1)]
-        if mode == 0: # somewhere from middle (random)
-            return choice([pckn for pckn in pcs if pckn[0] == pc])[1]
+        if mode == 0: # somewhere from middle (random.random)
+            return random.choice([pckn for pckn in pcs if pckn[0] == pc])[1]
 
 
 
@@ -431,11 +432,11 @@ def break_num(n, hi=1):
     hi is the highest possible number allowed to appear in the list."""
     ns = []
     if isinstance(n, float) or isinstance(hi, float):
-        f = uniform
+        f = random.uniform
     else:
-        f = randint
+        f = random.randint
     if hi < 0:
-        # uniform will return negative floats when hi is negative
+        # random.uniform will return negative floats when hi is negative
         raise ValueError(f"highest allowed ingredient can't be negative, got {hi}")
     while n > 0:
         r = f(0, hi)
@@ -445,11 +446,12 @@ def break_num(n, hi=1):
     return ns
 
 def break_num2(num, count):
+    """breaks the num into count random ingredients"""
     ingreds = [num / count for _ in range(count)]
     while count:
-        i1 = randrange(len(ingreds))
+        i1 = random.randrange(len(ingreds))
         i2 = (i1 + 1) % len(ingreds)
-        n = uniform(0, ingreds[i1])
+        n = random.uniform(0, ingreds[i1])
         ingreds[i1] -= n
         ingreds[i2] += n
         count -= 1

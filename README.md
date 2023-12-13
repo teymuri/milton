@@ -9,20 +9,20 @@ This package is a *work-in-progress* and *in active development*. Your feedback 
 
 ```python
 # import the module
->>> import akkord as cu
+>>> import akkord as akk
 
 # First initialize the module,
->>> cu.realtime.init()
+>>> akk.realtime.init()
 
 # create a single note,
->>> c4 = cu.make_note("c4")
+>>> c4 = akk.make_note("c4")
 
 # and put it in a list and send it to the processor to play it.
->>> cu.proc([c4])
+>>> akk.proc([c4])
 
 # Let us now define a second note with the key number 72, and specify it's starting time (onset) to be 1 second after the processor starts.
->>> c5 = cu.make_note(pch=72, onset=1)
->>> cu.proc([c4, c5])
+>>> c5 = akk.make_note(pch=72, onset=1)
+>>> akk.proc([c4, c5])
 
 # You should have heared both notes, played after each other.
 
@@ -35,23 +35,23 @@ This package is a *work-in-progress* and *in active development*. Your feedback 
 
 # Now we want to create an A minor chord with a duration of 2 seconds, 
 # and play it 1/2 second after the processor starts,
->>> a_min = cu.make_chord(pchs=(69, 72, 76), onset=.5, dur=2)
+>>> a_min = akk.make_chord(pchs=(69, 72, 76), onset=.5, dur=2)
 
 # and send it to the processor to play it.
->>> cu.proc([a_min])
+>>> akk.proc([a_min])
 
 # Let us now give the processor a list of notes/chords to play:
 # the chromatic scale starting from the middle c upwards.
->>> voice1 = [cu.make_note(pch=60+i, onset=i, dur=0.5) for i in range(12)]
->>> cu.proc([voice1])
+>>> voice1 = [akk.make_note(pch=60+i, onset=i, dur=0.5) for i in range(12)]
+>>> akk.proc([voice1])
 
 # Playing polyphony is as easy as passing multiple lists of note/chords
 # to the processor:
->>> voice2 = [cu.make_note(pch=48+i, onset=i+0.5, dur=0.5) for i in range(12)]
->>> voice3 = [cu.make_chord(pchs=[60+i, 60+i+4, 60+i+7], onset=i+0.2, dur=0.5) for i in range(12)]
->>> cu.proc([voice1, voice2, voice3])
+>>> voice2 = [akk.make_note(pch=48+i, onset=i+0.5, dur=0.5) for i in range(12)]
+>>> voice3 = [akk.make_chord(pchs=[60+i, 60+i+4, 60+i+7], onset=i+0.2, dur=0.5) for i in range(12)]
+>>> akk.proc([voice1, voice2, voice3])
 
 # If you want to write a midi file to the disk instead of playing it back
 # pass a path string as the second argument to the processor
->>> cu.proc([voice1, voice2, voice3], "/tmp/akkord.mid")
+>>> akk.proc([voice1, voice2, voice3], "/tmp/akkord.mid")
 ```

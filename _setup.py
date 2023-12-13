@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
 	name='computil',
-	version='0.0.0',
+	version='1.0.0',
 	description='Composition Utilities',
 	author='Amir Teymuri',
 	author_email='amiratwork22@gmail.com',

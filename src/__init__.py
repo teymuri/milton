@@ -1,8 +1,8 @@
 import __main__
 import asyncio
-import computil.realtime
-import computil.writer
-import computil.reader
+import akkord.realtime
+import akkord.writer
+import akkord.reader
 from datetime import datetime
 from .utils import *
 

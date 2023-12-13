@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+
+[project]
+name = "akkord"
+version = "0.0.1"
+authors = [
+  { name="Amir Teymuri", email="amiratwork22@gmail.com" },
+]
+license = { file = "LICENSE" }
+description = "Algorithmic Composition Utilities"
+readme = "README.md"
+requires-python = ">=3.5"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: GNU Affero General Public License v3",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    'python-rtmidi', 'MIDIUtil', 'mido', 'numpy'
+]
+
+[project.urls]
+"Homepage" = "https://github.com/teymuri/akkord"
+"Bug Tracker" = "https://github.com/teymuri/akkord/issues"

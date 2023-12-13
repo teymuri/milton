@@ -1,4 +1,4 @@
-# Composition Utilities
+# Algorithmic Composition Utilities
 
 The aim of this package is to provide a higher level, musically more expressive and abstract set of routines.
 It is meant to make expressing algorithmic music more intuitive and easy, by taking care of low-level MIDI implementation
@@ -9,7 +9,7 @@ This package is a *work-in-progress* and *in active development*. Your feedback 
 
 ```python
 # import the module
->>> import computil as cu
+>>> import akkord as cu
 
 # First initialize the module,
 >>> cu.realtime.init()
@@ -53,5 +53,5 @@ This package is a *work-in-progress* and *in active development*. Your feedback 
 
 # If you want to write a midi file to the disk instead of playing it back
 # pass a path string as the second argument to the processor
->>> cu.proc([voice1, voice2, voice3], "/tmp/computil.mid")
+>>> cu.proc([voice1, voice2, voice3], "/tmp/akkord.mid")
 ```

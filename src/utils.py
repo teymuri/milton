@@ -1,12 +1,12 @@
 """
-This module comprises the public interface of computil.
+This module comprises the public interface of akkord.
 """
 
 # from random.random import (random.random.choice, random, random.uniform, random.randint, random.randrange)
 import random
 from math import (modf, log)
 from itertools import (groupby, chain, islice)
-from computil.realtime import _get_note_data
+from akkord.realtime import _get_note_data
 
 INSTRUMENTS = [
     'Acoustic Grand Piano',
@@ -276,7 +276,7 @@ def knum_to_hz(knum):
 
 def hz_to_knum(hz):
     if hz == 0:
-        raise computil.err.CUZeroHzErr()
+        raise akkord.err.CUZeroHzErr()
     return 12 * (log2(hz) - log2(440)) + 69
 
 def get_intervals(ns):

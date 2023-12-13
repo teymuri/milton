@@ -5,6 +5,9 @@ It is meant to make expressing algorithmic music more intuitive and easy, by tak
 so that the composer can focus on his composition rather than following midi messages.
 This package is a *work-in-progress* and *in active development*. Your feedback is very welcome! :-)
 
+# Install
+Run the command `pip install akkord` to install Akkord from Pypi.
+
 # Quick Start
 
 ```python

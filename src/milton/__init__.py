@@ -1,8 +1,8 @@
 import __main__
 import asyncio
-import akkord.realtime
-import akkord.writer
-import akkord.reader
+import milton.realtime
+import milton.writer
+import milton.reader
 from datetime import datetime
 from .utils import *
 

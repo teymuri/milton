@@ -6,13 +6,13 @@ so that the composer can focus on his composition rather than following midi mes
 This package is a *work-in-progress* and *in active development*. Your feedback is very welcome! :-)
 
 # Install
-Run the command `pip install akkord` to install Akkord from Pypi.
+Run the command `pip install milton` to install Akkord from Pypi.
 
 # Quick Start
 
 ```python
 # import the module
->>> import akkord as akk
+>>> import milton as akk
 
 # First initialize the module,
 >>> akk.realtime.init()
@@ -56,5 +56,5 @@ Run the command `pip install akkord` to install Akkord from Pypi.
 
 # If you want to write a midi file to the disk instead of playing it back
 # pass a path string as the second argument to the processor
->>> akk.proc([voice1, voice2, voice3], "/tmp/akkord.mid")
+>>> akk.proc([voice1, voice2, voice3], "/tmp/milton.mid")
 ```

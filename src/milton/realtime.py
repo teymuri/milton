@@ -186,7 +186,7 @@ def init():
         _SYNTH_PORT_IDXS = [i for i, p in enumerate(available_ports) if synth.lower() in p]
         for i in range(milton.cfg.port_count):
             # create a new output client and register it
-            client = rtmidi.MidiOut(name=f"Computil Client {synth}", rtapi=api)
+            client = rtmidi.MidiOut(name=f"Milton Client {synth}", rtapi=api)
             client.open_port(_SYNTH_PORT_IDXS[i], f"Output Port")
             _client_registry[synth][i] = client
 

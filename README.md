@@ -1,6 +1,6 @@
 # Algorithmic Composition Utilities
 
-The aim of this package is to provide a higher level, musically more expressive and abstract set of routines.
+The aim of the [Milton](https://en.wikipedia.org/wiki/Milton_Babbitt) package is to provide a higher level, musically more expressive and abstract set of routines.
 It is meant to make expressing algorithmic music more intuitive and easy, by taking care of low-level MIDI implementation
 so that the composer can focus on his composition rather than following midi messages.
 This package is a *work-in-progress* and *in active development*. Your feedback is very welcome! :-)
